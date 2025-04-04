@@ -12,6 +12,9 @@
                 "-I${workspaceFolder}/Models",
                 "${workspaceFolder}/main.cpp",
                 "${workspaceFolder}/Models/StockPricesRecordClass.cpp",
+                "${workspaceFolder}/Models/StockPricesStatisticsClass.cpp",
+                "${workspaceFolder}/Controller/StockPricesController.cpp",
+                "${workspaceFolder}/Controller/StockPricesStatisticsController.cpp",
                 "-o",
                 "${workspaceFolder}/build/${fileBasenameNoExtension}.exe"
             ],

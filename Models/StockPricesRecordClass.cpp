@@ -5,7 +5,7 @@
 #include <ctime>
 #include <algorithm>
 
-const std::string StockPricesRecordClass::WTI_OIL = "CL=F_closing_price";
+const std::string StockPricesRecordClass::OIL = "CL=F_closing_price";
 const std::string StockPricesRecordClass::GOLD = "GC=F_closing_price";
 const std::string StockPricesRecordClass::SILVER = "SI=F_closing_price";
 const std::string StockPricesRecordClass::NATURAL_GAS = "NG=F_closing_price";
@@ -17,7 +17,7 @@ const std::string StockPricesRecordClass::PLATINUM = "PL=F_closing_price";
 const std::string StockPricesRecordClass::PALLADIUM = "PA=F_closing_price";
 
 StockPricesRecordClass::StockPricesRecordClass() {
-    // Constructor implementation
+    
 }
 
 bool StockPricesRecordClass::loadFromCSV(const std::string& filename) {

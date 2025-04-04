@@ -1,5 +1,5 @@
-#ifndef STOCKPRICES_H
-#define STOCKPRICES_H
+#ifndef STOCKPRICESRECORDCLASS_H
+#define STOCKPRICESRECORDCLASS_H
 
 #include <string>
 #include <vector>
@@ -12,8 +12,7 @@ public:
     
     bool loadFromCSV(const std::string& filename);    
     float getPrice(const std::string& commodity, const std::string& date) const;
-    float getPrice(const std::string& commodity, time_t date) const;
-    
+    float getPrice(const std::string& commodity, time_t date) const;    
     std::map<time_t, float> getAllPrices(const std::string& commodity) const;    
     std::vector<time_t> getAllDates() const;    
     std::vector<std::string> getAllCommodities() const;    
@@ -21,7 +20,7 @@ public:
     time_t getLatestDate() const;
     std::string formatDate(time_t date) const;
     
-    static const std::string WTI_OIL;
+    static const std::string OIL;
     static const std::string GOLD;
     static const std::string SILVER;
     static const std::string NATURAL_GAS;
@@ -38,4 +37,4 @@ private:
     std::vector<time_t> dates;
 };
 
-#endif
+#endif // STOCKPRICESRECORDCLASS_H
