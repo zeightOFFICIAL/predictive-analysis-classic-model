@@ -1,7 +1,7 @@
 #ifndef STOCKPRICESRECORDCONTROLLER_H
 #define STOCKPRICESRECORDCONTROLLER_H
 
-#include "StockPricesRecordClass.h"
+#include "../Models/StockPricesRecordClass.h"
 #include <string>
 #include <vector>
 

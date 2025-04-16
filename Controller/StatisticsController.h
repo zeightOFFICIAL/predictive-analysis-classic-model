@@ -1,7 +1,7 @@
 #ifndef STATISTICSCONTROLLER_H
 #define STATISTICSCONTROLLER_H
 
-#include "StatisticsClass.h"
+#include "../Models/StatisticsClass.h"
 #include <string>
 #include <vector>
 

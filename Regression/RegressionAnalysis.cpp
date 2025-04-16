@@ -34,17 +34,40 @@ RegressionMetrics RegressionAnalysis::calculateRegression(const std::vector<doub
     return results;
 }
 
-void RegressionAnalysis::generatePlot(const std::vector<double>& goldPrices, 
-                                   const std::vector<double>& otherPrices,
-                                   const RegressionMetrics& results,
-                                   const std::string& commodityName) {
-    std::ofstream dataFile("regression.dat");
+#include <cstdio>  // For std::remove
+#include <stdexcept>
+
+void RegressionAnalysis::generatePlot(
+    const std::vector<double>& goldPrices,
+    const std::vector<double>& otherPrices,
+    const RegressionMetrics& results,
+    const std::string& commodityName) 
+{
+    // Validate input sizes
+    if (goldPrices.size() != otherPrices.size() || goldPrices.size() != results.fittedValues.size()) {
+        throw std::invalid_argument("Input vectors must have the same size.");
+    }
+
+    // Write data file
+    const std::string dataFilename = "regression.dat";
+    std::ofstream dataFile(dataFilename);
+    if (!dataFile.is_open()) {
+        throw std::runtime_error("Failed to open data file for writing.");
+    }
+
     for (size_t i = 0; i < goldPrices.size(); ++i) {
         dataFile << goldPrices[i] << " " << otherPrices[i] << " " 
-                << results.fittedValues[i] << "\n";
+                 << results.fittedValues[i] << "\n";
     }
-    
-    std::ofstream script("plot_regression.gp");
+    dataFile.close();
+
+    // Write Gnuplot script
+    const std::string scriptFilename = "plot_regression.gp";
+    std::ofstream script(scriptFilename);
+    if (!script.is_open()) {
+        throw std::runtime_error("Failed to open Gnuplot script for writing.");
+    }
+
     script << "set terminal pngcairo enhanced font 'Arial,12'\n"
            << "set output 'regression_" << commodityName << ".png'\n"
            << "set title '" << commodityName << " vs Gold Regression (R² = " << results.R2 << ")'\n"
@@ -52,7 +75,16 @@ void RegressionAnalysis::generatePlot(const std::vector<double>& goldPrices,
            << "set ylabel '" << commodityName << " Price (USD)'\n"
            << "set grid\n"
            << "plot 'regression.dat' using 1:2 with points pt 7 ps 0.5 lc rgb 'blue' title 'Actual', \\\n"
-           << "     'regression.dat' using 1:3 with lines lw 2 lc rgb 'red' title 'Fitted'\n";
-    
-    system("gnuplot plot_regression.gp");
+           << "     '' using 1:3 with lines lw 2 lc rgb 'red' title 'Fitted'\n";  // Reuse filename with ''
+    script.close();
+
+    // Execute Gnuplot
+    int status = system(("gnuplot " + scriptFilename).c_str());
+    if (status != 0) {
+        throw std::runtime_error("Gnuplot execution failed.");
+    }
+
+    // Cleanup temporary files (optional)
+    std::remove(dataFilename.c_str());
+    std::remove(scriptFilename.c_str());
 }

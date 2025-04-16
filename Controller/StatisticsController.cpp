@@ -103,8 +103,21 @@ void StatisticsController::showCommodityAnalysis(const std::string& commodityNam
     }
 
     const auto& stat = statsRef.getStatistics(commodityName);
-    
-    printSectionHeader(commodityName + " ANALYSIS");
+    auto getCommodityName = [](const std::string& code) -> std::string {
+        if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
+        if (code == StockPricesRecordClass::GOLD) return "Gold";
+        if (code == StockPricesRecordClass::SILVER) return "Silver";
+        if (code == StockPricesRecordClass::NATURAL_GAS) return "Natural Gas";
+        if (code == StockPricesRecordClass::CORN) return "Corn";
+        if (code == StockPricesRecordClass::WHEAT) return "Wheat";
+        if (code == StockPricesRecordClass::SOYBEAN) return "Soybean";
+        if (code == StockPricesRecordClass::COPPER) return "Copper";
+        if (code == StockPricesRecordClass::PLATINUM) return "Platinum";
+        if (code == StockPricesRecordClass::PALLADIUM) return "Palladium";
+        return "N/A";
+    };
+    const std::string commodity = getCommodityName(commodityName);
+    printSectionHeader(commodity + "Analysis");
     
     // Basic Statistics
     printStatisticRow("Data Points", stat.count);

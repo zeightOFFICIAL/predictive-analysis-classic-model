@@ -2,7 +2,7 @@
 #define REGRESSIONCONTROLLER_H
 
 #include "StatisticsController.h"
-#include "RegressionAnalysis.h"
+#include "../Regression/RegressionAnalysis.h"
 #include <string>
 
 class RegressionController {

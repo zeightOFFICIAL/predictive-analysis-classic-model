@@ -1,14 +1,19 @@
+// native libs
 #include <iostream>
 #include <string>
 #include <iomanip>
 #include <limits>
+
+// local includes
 #include "Models/StockPricesRecordClass.h"
-#include "Controller/StockPricesRecordController.h"
 #include "Models/StatisticsClass.h"
+#include "Controller/StockPricesRecordController.h"
 #include "Controller/StatisticsController.h"
 #include "Controller/RegressionController.h"
 #include "Regression/RegressionAnalysis.h"
 
+
+// console colors (ansi)
 const std::string RED = "\033[31m";
 const std::string GREEN = "\033[32m";
 const std::string YELLOW = "\033[33m";
@@ -18,6 +23,7 @@ const std::string CYAN = "\033[36m";
 const std::string RESET = "\033[0m";
 const std::string BOLD = "\033[1m";
 
+// display menu
 void displayMenu() {
     std::cout << "\n" << BLUE << "=== COMMODITY ANALYSIS MENU ===" << RESET << "\n";
     std::cout << "1. View prices for specific date\n";
@@ -34,6 +40,7 @@ void displayMenu() {
     std::cout << "Enter your choice (0-9): ";
 }
 
+// display commodity list
 void displayCommodityMenu(const std::vector<std::string>& commodities) {
     std::cout << "\n" << CYAN << "=== AVAILABLE COMMODITIES ===" << RESET << "\n";
     for (size_t i = 0; i < commodities.size(); ++i) {
@@ -43,16 +50,13 @@ void displayCommodityMenu(const std::vector<std::string>& commodities) {
     std::cout << "Select commodity: ";
 }
 
+// control function for selection of commodity
 void runCustomRegression(const StatisticsController& statsController, const RegressionController& regController) {
     auto commodities = statsController.getAvailableCommodities();
     if (commodities.empty()) {
         std::cout << RED << "No commodities available for analysis!\n" << RESET;
         return;
     }
-
-    // Filter out Gold since we're comparing everything to Gold
-    commodities.erase(std::remove(commodities.begin(), commodities.end(), 
-                                StockPricesRecordClass::GOLD), commodities.end());
 
     if (commodities.empty()) {
         std::cout << YELLOW << "No commodities available for regression with Gold\n" << RESET;
