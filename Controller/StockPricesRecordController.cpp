@@ -95,7 +95,6 @@ void StockPricesRecordController::displayDataSummary() const {
     auto commodities = dataRef.getAllCommodities();
     std::cout << "Commodities: " << BOLD << commodities.size() << RESET << "\n";
     
-    // Convert commodity codes to readable names
     auto getCommodityName = [](const std::string& code) {
         if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
         if (code == StockPricesRecordClass::GOLD) return "Gold";
@@ -110,7 +109,6 @@ void StockPricesRecordController::displayDataSummary() const {
         return "N/A";
     };
     
-    // Display price range for each commodity
     for (const auto& commodity : commodities) {
         auto prices = dataRef.getAllPrices(commodity);
         if (!prices.empty()) {
@@ -149,7 +147,6 @@ void StockPricesRecordController::displayDateRange(const std::string& startDate,
 
     printHeader("DATE RANGE: " + startDate + " to " + endDate);
     
-    // Get all dates in the range
     auto allDates = dataRef.getAllDates();
     std::vector<time_t> rangeDates;
     std::copy_if(allDates.begin(), allDates.end(), std::back_inserter(rangeDates),
@@ -163,7 +160,6 @@ void StockPricesRecordController::displayDateRange(const std::string& startDate,
         return;
     }
 
-    // Display summary for the range
     std::cout << "Found " << rangeDates.size() << " records in range\n\n";
     for (const auto& date : rangeDates) {
         displayDataForDate(dataRef.formatDate(date));

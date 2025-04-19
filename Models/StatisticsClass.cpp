@@ -17,7 +17,6 @@ void StatisticsClass::calculateAll() {
         std::vector<double> prices;
         prices.reserve(pricesMap.size());
         
-        // Extract prices to vector
         for (const auto& [date, price] : pricesMap) {
             prices.push_back(price);
         }
@@ -27,27 +26,22 @@ void StatisticsClass::calculateAll() {
         Statistics stats;
         stats.count = prices.size();
         
-        // Calculate basic statistics
         stats.mean = calculateMean(prices);
         stats.variance = calculateVariance(prices, stats.mean);
         stats.standardDeviation = std::sqrt(stats.variance);
         stats.median = calculateMedian(prices);
         
-        // Calculate quartiles and IQR
         auto quartiles = calculateQuartiles(prices);
         stats.iqr = quartiles[2] - quartiles[0]; // Q3 - Q1
         
-        // Calculate min/max/range
         auto [minIt, maxIt] = std::minmax_element(prices.begin(), prices.end());
         stats.min = *minIt;
         stats.max = *maxIt;
         stats.range = stats.max - stats.min;
         
-        // Calculate modes
         stats.modes = calculateModes(prices);
         stats.hasSingleMode = (stats.modes.size() == 1);
         
-        // Calculate higher moments if there's variation
         if (stats.standardDeviation > 0) {
             stats.skewness = calculateSkewness(prices, stats.mean, stats.standardDeviation);
             stats.kurtosis = calculateKurtosis(prices, stats.mean, stats.standardDeviation);
@@ -87,7 +81,7 @@ double StatisticsClass::calculateVariance(const std::vector<double>& values, dou
     for (double val : values) {
         sum += std::pow(val - mean, 2);
     }
-    return sum / values.size(); // Population variance
+    return sum / values.size(); 
 }
 
 double StatisticsClass::calculateSkewness(const std::vector<double>& values, 
@@ -164,24 +158,20 @@ double StatisticsClass::calculatePercentile(const std::vector<double>& sortedVal
 std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const {
     std::map<std::string, double> correlations;
     
-    // Get gold prices
     auto goldPricesMap = dataRef.getAllPrices(StockPricesRecordClass::GOLD);
     std::vector<double> goldPrices;
     for (const auto& [_, price] : goldPricesMap) {
         goldPrices.push_back(price);
     }
     
-    // Get all commodities except gold
     auto commodities = dataRef.getAllCommodities();
     
-    // Calculate correlation with each commodity
     for (const auto& commodity : commodities) {
-        if (commodity == StockPricesRecordClass::GOLD) continue; // Skip gold itself
+        if (commodity == StockPricesRecordClass::GOLD) continue; 
         
         auto pricesMap = dataRef.getAllPrices(commodity);
         std::vector<double> commodityPrices;
         
-        // Align prices by date
         for (const auto& [date, price] : goldPricesMap) {
             float commodityPrice = dataRef.getPrice(commodity, date);
             if (commodityPrice != -1.0f) {
@@ -189,7 +179,6 @@ std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const
             }
         }
         
-        // Ensure we have matching data points
         if (commodityPrices.size() == goldPrices.size() && !commodityPrices.empty()) {
             correlations[commodity] = calculatePearsonCorrelation(goldPrices, commodityPrices);
         }

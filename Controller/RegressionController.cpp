@@ -1,10 +1,9 @@
 #include <iostream>
-#include <numeric> // For std::accumulate
-#include <cmath>   // For sqrt()
+#include <numeric> 
+#include <cmath>
 #include "RegressionController.h"
 #include "StockPricesRecordClass.h"
 
-// ANSI color codes
 namespace {
     const std::string RED = "\033[31m";
     const std::string GREEN = "\033[32m";
@@ -26,7 +25,6 @@ void RegressionController::displayResults(const RegressionMetrics& results,
     std::cout << "RSS: " << results.RSS << " (Residual Sum of Squares)\n";
     std::cout << "R-squared: " << results.R2 << "\n";
     
-    // Calculate residual statistics
     double sumResiduals = std::accumulate(results.residuals.begin(), results.residuals.end(), 0.0);
     double avgResidual = sumResiduals / results.residuals.size();
     double sumSqResiduals = 0.0;
@@ -49,7 +47,6 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
     std::cout << CYAN << "\nRunning " << commodityLabel << "-Gold Regression Analysis..." << RESET << std::endl;
     
     try {
-        // Get price data
         auto goldPrices = statsController.getCommodityPrices(StockPricesRecordClass::GOLD);
         auto otherPrices = statsController.getCommodityPrices(commodityName);
         
@@ -58,10 +55,8 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
             return;
         }
         
-        // Calculate regression metrics
         RegressionMetrics results = RegressionAnalysis::calculateRegression(goldPrices, otherPrices);
         
-        // Store residuals for analysis
         results.residuals.resize(goldPrices.size());
         for (size_t i = 0; i < goldPrices.size(); ++i) {
             results.residuals[i] = otherPrices[i] - results.fittedValues[i];
@@ -69,7 +64,6 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
         
         displayResults(results, commodityLabel);
         
-        // Ask to generate plots
         std::cout << "\nGenerate regression plot? (y/n): ";
         char plotChoice;
         std::cin >> plotChoice;
@@ -77,7 +71,6 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
             RegressionAnalysis::generatePlot(goldPrices, otherPrices, results, commodityLabel);
             std::cout << GREEN << "\nRegression plot saved as 'regression_" << commodityLabel << ".png'" << RESET << "\n";
             
-            // Ask to generate residual plot
             std::cout << "\nGenerate residual plot? (y/n): ";
             std::cin >> plotChoice;
             if (tolower(plotChoice) == 'y') {

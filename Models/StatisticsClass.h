@@ -21,7 +21,6 @@ public:
         double range = 0.0;
         double iqr = 0.0;
         
-        // Shape
         double skewness = 0.0;
         double kurtosis = 0.0;
         
@@ -41,7 +40,6 @@ public:
     static double calculateSkewness(const std::vector<double>& values, double mean, double stdDev);
     static double calculateKurtosis(const std::vector<double>& values, double mean, double stdDev);
 
-    // Add to the public section of the class
     std::map<std::string, double> calculateGoldCorrelations() const;
     static double calculatePearsonCorrelation(const std::vector<double>& x, const std::vector<double>& y);
 private:

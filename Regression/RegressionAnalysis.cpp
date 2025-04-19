@@ -42,12 +42,10 @@ void RegressionAnalysis::plotResiduals(
     const RegressionMetrics& results,
     const std::string& commodityName) 
 {
-    // Check input sizes
     if (goldPrices.size() != otherPrices.size() || goldPrices.size() != results.fittedValues.size()) {
         throw std::invalid_argument("Input vectors must have the same size.");
     }
 
-    // Write residuals data to a temporary file
     const std::string residualsFile = "residuals.dat";
     std::ofstream out(residualsFile);
     if (!out) {
@@ -60,7 +58,6 @@ void RegressionAnalysis::plotResiduals(
     }
     out.close();
 
-    // Generate Gnuplot script
     const std::string scriptFile = "plot_residuals.gp";
     std::ofstream script(scriptFile);
     if (!script) {
@@ -73,18 +70,16 @@ void RegressionAnalysis::plotResiduals(
            << "set xlabel 'Gold Price (USD)'\n"
            << "set ylabel 'Residuals (Actual - Predicted)'\n"
            << "set grid\n"
-           << "set zeroaxis lt -1\n"  // Highlight y=0 line
+           << "set zeroaxis lt -1\n" 
            << "plot '" << residualsFile << "' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'Residuals', \\\n"
            << "     0 with lines lc rgb 'black' title 'Zero line'\n";
     script.close();
 
-    // Execute Gnuplot
     int status = system(("gnuplot " + scriptFile).c_str());
     if (status != 0) {
         throw std::runtime_error("Gnuplot failed to execute.");
     }
 
-    // Clean up temporary files (optional)
     std::remove(residualsFile.c_str());
     std::remove(scriptFile.c_str());
 }
@@ -95,12 +90,10 @@ void RegressionAnalysis::generatePlot(
     const RegressionMetrics& results,
     const std::string& commodityName) 
 {
-    // Validate input sizes
     if (goldPrices.size() != otherPrices.size() || goldPrices.size() != results.fittedValues.size()) {
         throw std::invalid_argument("Input vectors must have the same size.");
     }
 
-    // Write data file
     const std::string dataFilename = "regression.dat";
     std::ofstream dataFile(dataFilename);
     if (!dataFile.is_open()) {
@@ -113,7 +106,6 @@ void RegressionAnalysis::generatePlot(
     }
     dataFile.close();
 
-    // Write Gnuplot script
     const std::string scriptFilename = "plot_regression.gp";
     std::ofstream script(scriptFilename);
     if (!script.is_open()) {
@@ -130,13 +122,11 @@ void RegressionAnalysis::generatePlot(
            << "     '' using 1:3 with lines lw 2 lc rgb 'red' title 'Fitted'\n";  // Reuse filename with ''
     script.close();
 
-    // Execute Gnuplot
     int status = system(("gnuplot " + scriptFilename).c_str());
     if (status != 0) {
         throw std::runtime_error("Gnuplot execution failed.");
     }
 
-    // Cleanup temporary files (optional)
     std::remove(dataFilename.c_str());
     std::remove(scriptFilename.c_str());
 }

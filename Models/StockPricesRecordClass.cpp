@@ -129,10 +129,9 @@ time_t StockPricesRecordClass::parseDate(const std::string& dateStr) const {
     
     ss >> tm.tm_year;
     
-    // Adjust for tm structure (month 0-11, years since 1900)
     tm.tm_mon -= 1;
     if (tm.tm_year >= 0 && tm.tm_year < 100) {
-        tm.tm_year += 100; // Assume 2000s
+        tm.tm_year += 100; 
     }
     
     time_t time = mktime(&tm);

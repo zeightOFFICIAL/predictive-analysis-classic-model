@@ -5,7 +5,6 @@
 #include <fstream>
 #include <math.h>
 
-// ANSI color codes
 namespace {
     const std::string RED = "\033[31m";
     const std::string GREEN = "\033[32m";
@@ -119,19 +118,16 @@ void StatisticsController::showCommodityAnalysis(const std::string& commodityNam
     const std::string commodity = getCommodityName(commodityName);
     printSectionHeader(commodity + "Analysis");
     
-    // Basic Statistics
     printStatisticRow("Data Points", stat.count);
     printStatisticRow("Mean", stat.mean);
     printStatisticRow("Median", stat.median);
     printStatisticRow("Mode", 0, formatModeOutput(stat.modes, stat.hasSingleMode));
     
-    // Dispersion
     printStatisticRow("Variance", stat.variance);
     printStatisticRow("Std Deviation", stat.standardDeviation);
     printStatisticRow("Range", stat.range, "(" + std::to_string(stat.min) + " to " + std::to_string(stat.max) + ")");
     printStatisticRow("IQR", stat.iqr);
     
-    // Distribution
     std::cout << std::left << std::setw(20) << "Distribution Shape" << ": "
               << "Skewness=" << stat.skewness << " (" << interpretSkewness(stat.skewness) << "), "
               << "Kurtosis=" << stat.kurtosis << " (" << interpretKurtosis(stat.kurtosis) << ")\n";
@@ -146,7 +142,6 @@ void StatisticsController::showComparativeAnalysis() const {
 
     printSectionHeader("MARKET VOLATILITY AND SKEW ANALYSIS");
     
-    // Convert commodity codes to readable names
     auto getCommodityName = [](const std::string& code) {
         if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
         if (code == StockPricesRecordClass::GOLD) return "Gold";
@@ -161,7 +156,6 @@ void StatisticsController::showComparativeAnalysis() const {
         return "N/A";
     };
 
-    // Compare volatility (std deviation)
     auto mostVolatile = *std::max_element(commodities.begin(), commodities.end(),
         [this](const auto& a, const auto& b) {
             return statsRef.getStatistics(a).standardDeviation < statsRef.getStatistics(b).standardDeviation;
@@ -178,7 +172,6 @@ void StatisticsController::showComparativeAnalysis() const {
     std::cout << "- " << BOLD << getCommodityName(leastVolatile) << RESET << " is the least volatile (ro = " 
               << statsRef.getStatistics(leastVolatile).standardDeviation << ")\n";
               
-    // Compare skewness
     auto mostRightSkewed = *std::max_element(commodities.begin(), commodities.end(),
         [this](const auto& a, const auto& b) {
             return statsRef.getStatistics(a).skewness < statsRef.getStatistics(b).skewness;
@@ -212,7 +205,6 @@ void StatisticsController::showGoldCorrelations() const {
     
     for (const auto& [commodity, coeff] : correlations) {
         std::string commodityName;
-        // Convert commodity codes to readable names
         if (commodity == StockPricesRecordClass::WTI_OIL) commodityName = "Crude Oil";
         else if (commodity == StockPricesRecordClass::GOLD) commodityName = "Gold";
         else if (commodity == StockPricesRecordClass::SILVER) commodityName = "Silver";
@@ -264,11 +256,9 @@ void StatisticsController::showGoldCorrelations() const {
 std::vector<StatisticsController::PlotData> StatisticsController::preparePlotData() const {
     std::vector<PlotData> plots;
     
-    // Get gold prices from statistics data
     auto goldStats = statsRef.getStatistics(StockPricesRecordClass::GOLD);
     if (goldStats.count == 0) return plots;
     
-    // Get all commodities except gold
     auto commodities = statsRef.getAvailableCommodities();
     
     for (const auto& commodity : commodities) {
@@ -278,14 +268,11 @@ std::vector<StatisticsController::PlotData> StatisticsController::preparePlotDat
         plot.commodity = commodity;
         auto commodityStats = statsRef.getStatistics(commodity);
         
-        // We can't correlate if we don't have matching counts
         if (commodityStats.count != goldStats.count) continue;
         
-        // Get raw prices from RecordClass (assuming we can access it)
         auto goldPricesMap = statsRef.getDataRef().getAllPrices(StockPricesRecordClass::GOLD);
         auto otherPricesMap = statsRef.getDataRef().getAllPrices(commodity);
         
-        // Align prices by date
         for (const auto& [date, goldPrice] : goldPricesMap) {
             auto it = otherPricesMap.find(date);
             if (it != otherPricesMap.end()) {
@@ -293,7 +280,6 @@ std::vector<StatisticsController::PlotData> StatisticsController::preparePlotDat
             }
         }
         
-        // Calculate correlation if we have data
         if (!plot.points.empty()) {
             std::vector<double> x, y;
             for (const auto& [xVal, yVal] : plot.points) {
@@ -305,7 +291,6 @@ std::vector<StatisticsController::PlotData> StatisticsController::preparePlotDat
         }
     }
     
-    // Sort by absolute correlation strength
     std::sort(plots.begin(), plots.end(), [](const auto& a, const auto& b) {
         return std::abs(a.correlation) > std::abs(b.correlation);
     });
@@ -346,11 +331,10 @@ std::string StatisticsController::getCommodityName(const std::string& code) cons
     if (code == StockPricesRecordClass::COPPER) return "Copper";
     if (code == StockPricesRecordClass::PLATINUM) return "Platinum";
     if (code == StockPricesRecordClass::PALLADIUM) return "Palladium";
-    return code; // Return the code if no match found
+    return code;
 }
 
 void StatisticsController::createGNUplotScript(const PlotData& data) const {
-
     
     std::ofstream script("plot_script.gp");
     
@@ -373,23 +357,19 @@ std::vector<double> StatisticsController::getCommodityPrices(const std::string& 
     return prices;
 }
 
-// After calculating correlations in StatisticsController.cpp
 void analyzeSilverGoldRegression(const std::vector<double>& goldPrices, 
         const std::vector<double>& silverPrices) {
-    // Calculate means
     double meanGold = StatisticsClass::calculateMean(goldPrices);
     double meanSilver = StatisticsClass::calculateMean(silverPrices);
 
-    // Calculate covariance and variance
     double cov = 0.0, varGold = 0.0;
     for (size_t i = 0; i < goldPrices.size(); ++i) {
     cov += (goldPrices[i] - meanGold) * (silverPrices[i] - meanSilver);
     varGold += pow(goldPrices[i] - meanGold, 2);
     }
 
-    // Calculate coefficients
-    double beta1 = cov / varGold;  // Slope
-    double beta0 = meanSilver - beta1 * meanGold;  // Intercept
+    double beta1 = cov / varGold; 
+    double beta0 = meanSilver - beta1 * meanGold; 
 
     std::cout << "Actual OLS coefficients:\n";
     std::cout << "Slope (β1): " << beta1 << "\n";
