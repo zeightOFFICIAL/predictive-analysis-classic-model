@@ -1,10 +1,8 @@
-// native libs
 #include <iostream>
 #include <string>
 #include <iomanip>
 #include <limits>
 
-// local includes
 #include "Models/StockPricesRecordClass.h"
 #include "Models/StatisticsClass.h"
 #include "Controller/StockPricesRecordController.h"
@@ -12,8 +10,6 @@
 #include "Controller/RegressionController.h"
 #include "Regression/RegressionAnalysis.h"
 
-
-// console colors (ansi)
 const std::string RED = "\033[31m";
 const std::string GREEN = "\033[32m";
 const std::string YELLOW = "\033[33m";
@@ -23,7 +19,6 @@ const std::string CYAN = "\033[36m";
 const std::string RESET = "\033[0m";
 const std::string BOLD = "\033[1m";
 
-// display menu
 void displayMenu() {
     std::cout << "\n" << BLUE << "=== COMMODITY ANALYSIS MENU ===" << RESET << "\n";
     std::cout << "1. View prices for specific date\n";
@@ -40,7 +35,6 @@ void displayMenu() {
     std::cout << "Enter your choice (0-9): ";
 }
 
-// display commodity list
 void displayCommodityMenu(const std::vector<std::string>& commodities) {
     std::cout << "\n" << CYAN << "=== AVAILABLE COMMODITIES ===" << RESET << "\n";
     for (size_t i = 0; i < commodities.size(); ++i) {
@@ -50,7 +44,6 @@ void displayCommodityMenu(const std::vector<std::string>& commodities) {
     std::cout << "Select commodity: ";
 }
 
-// control function for selection of commodity
 void runCustomRegression(const StatisticsController& statsController, const RegressionController& regController) {
     auto commodities = statsController.getAvailableCommodities();
     if (commodities.empty()) {
@@ -104,7 +97,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Load data
     std::cout << GREEN << "\nLoading market data from " << argv[1] << "..." << RESET << std::endl;
     StockPricesRecordClass data;
     if (!data.loadFromCSV(argv[1])) {
@@ -112,7 +104,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Initialize controllers
     StockPricesRecordController recordController(data);
     StatisticsClass stats(data);
     StatisticsController statsController(stats);
@@ -129,10 +120,10 @@ int main(int argc, char* argv[]) {
             std::cout << RED << "Invalid input! Please enter a number.\n" << RESET;
             continue;
         }
-        std::cin.ignore(); // Clear newline
+        std::cin.ignore();
 
         switch (choice) {
-            case 1: { // View specific date
+            case 1: { 
                 auto dates = recordController.getAvailableDatesFormatted();
                 if (dates.empty()) {
                     std::cout << RED << "No market data available!\n" << RESET;
@@ -144,40 +135,40 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            case 2: // Dataset overview
+            case 2:
                 recordController.displayDataSummary();
                 break;
 
-            case 3: // Full statistics
+            case 3:
                 statsController.showFullReport();
                 break;
 
-            case 4: // Comparative analysis
+            case 4:
                 statsController.showComparativeAnalysis();
                 break;
 
-            case 5: // Gold correlations
+            case 5:
                 statsController.showGoldCorrelations();
                 break;
 
-            case 6: // Generate correlation graphs
+            case 6:
                 std::cout << CYAN << "\nGenerating scatter plots..." << RESET << std::endl;
                 statsController.generateScatterPlotsWithGNUplot();
                 break;
 
-            case 7: // Silver-Gold regression
+            case 7:
                 regController.runSilverGoldRegression();
                 break;
 
-            case 8: // Copper-Gold regression
+            case 8:
                 regController.runCopperGoldRegression();
                 break;
 
-            case 9: // Custom commodity regression
+            case 9:
                 runCustomRegression(statsController, regController);
                 break;
 
-            case 0: // Exit
+            case 0:
                 std::cout << GREEN << "\nClosing market analysis...\n" << RESET;
                 return 0;
 
