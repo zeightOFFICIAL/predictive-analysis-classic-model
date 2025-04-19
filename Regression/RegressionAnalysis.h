@@ -21,6 +21,10 @@ public:
                            const std::vector<double>& otherPrices,
                            const RegressionMetrics& results,
                            const std::string& commodityName);
+    static void plotResiduals(const std::vector<double>& goldPrices,
+                            const std::vector<double>& otherPrices,
+                            const RegressionMetrics& results,
+                            const std::string& commodityName);
 };
 
 #endif // REGRESSIONANALYSIS_H

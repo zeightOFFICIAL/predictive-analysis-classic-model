@@ -47,13 +47,21 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
         RegressionMetrics results = RegressionAnalysis::calculateRegression(goldPrices, otherPrices);
         displayResults(results, commodityLabel);
         
-        // Ask to generate plot
+        // Ask to generate plots
         std::cout << "\nGenerate regression plot? (y/n): ";
         char plotChoice;
         std::cin >> plotChoice;
         if (tolower(plotChoice) == 'y') {
             RegressionAnalysis::generatePlot(goldPrices, otherPrices, results, commodityLabel);
-            std::cout << GREEN << "\nPlot saved as 'regression_" << commodityLabel << ".png'" << RESET << "\n";
+            std::cout << GREEN << "\nRegression plot saved as 'regression_" << commodityLabel << ".png'" << RESET << "\n";
+            
+            // Ask to generate residual plot
+            std::cout << "\nGenerate residual plot? (y/n): ";
+            std::cin >> plotChoice;
+            if (tolower(plotChoice) == 'y') {
+                RegressionAnalysis::plotResiduals(goldPrices, otherPrices, results, commodityLabel);
+                std::cout << GREEN << "\nResidual plot saved as 'residuals_" << commodityLabel << ".png'" << RESET << "\n";
+            }
         }
         
     } catch (const std::exception& e) {

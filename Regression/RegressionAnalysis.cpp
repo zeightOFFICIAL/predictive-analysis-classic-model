@@ -2,6 +2,8 @@
 #include <numeric>
 #include <cmath>
 #include <fstream>
+#include <cstdio>  // For std::remove
+#include <stdexcept>
 
 RegressionMetrics RegressionAnalysis::calculateRegression(const std::vector<double>& X, const std::vector<double>& Y) {
     RegressionMetrics results;
@@ -34,8 +36,58 @@ RegressionMetrics RegressionAnalysis::calculateRegression(const std::vector<doub
     return results;
 }
 
-#include <cstdio>  // For std::remove
-#include <stdexcept>
+void RegressionAnalysis::plotResiduals(
+    const std::vector<double>& goldPrices,
+    const std::vector<double>& otherPrices,
+    const RegressionMetrics& results,
+    const std::string& commodityName) 
+{
+    // Check input sizes
+    if (goldPrices.size() != otherPrices.size() || goldPrices.size() != results.fittedValues.size()) {
+        throw std::invalid_argument("Input vectors must have the same size.");
+    }
+
+    // Write residuals data to a temporary file
+    const std::string residualsFile = "residuals.dat";
+    std::ofstream out(residualsFile);
+    if (!out) {
+        throw std::runtime_error("Failed to open residuals data file.");
+    }
+
+    for (size_t i = 0; i < goldPrices.size(); ++i) {
+        double residual = otherPrices[i] - results.fittedValues[i];
+        out << goldPrices[i] << " " << residual << "\n";
+    }
+    out.close();
+
+    // Generate Gnuplot script
+    const std::string scriptFile = "plot_residuals.gp";
+    std::ofstream script(scriptFile);
+    if (!script) {
+        throw std::runtime_error("Failed to create Gnuplot script.");
+    }
+
+    script << "set terminal pngcairo enhanced font 'Arial,12'\n"
+           << "set output 'residuals_" << commodityName << ".png'\n"
+           << "set title 'Residuals Plot (" << commodityName << " vs Gold)'\n"
+           << "set xlabel 'Gold Price (USD)'\n"
+           << "set ylabel 'Residuals (Actual - Predicted)'\n"
+           << "set grid\n"
+           << "set zeroaxis lt -1\n"  // Highlight y=0 line
+           << "plot '" << residualsFile << "' using 1:2 with points pt 7 ps 0.5 lc rgb 'red' title 'Residuals', \\\n"
+           << "     0 with lines lc rgb 'black' title 'Zero line'\n";
+    script.close();
+
+    // Execute Gnuplot
+    int status = system(("gnuplot " + scriptFile).c_str());
+    if (status != 0) {
+        throw std::runtime_error("Gnuplot failed to execute.");
+    }
+
+    // Clean up temporary files (optional)
+    std::remove(residualsFile.c_str());
+    std::remove(scriptFile.c_str());
+}
 
 void RegressionAnalysis::generatePlot(
     const std::vector<double>& goldPrices,
