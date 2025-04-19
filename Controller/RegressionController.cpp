@@ -1,4 +1,6 @@
 #include <iostream>
+#include <numeric> // For std::accumulate
+#include <cmath>   // For sqrt()
 #include "RegressionController.h"
 #include "StockPricesRecordClass.h"
 
@@ -23,10 +25,23 @@ void RegressionController::displayResults(const RegressionMetrics& results,
     std::cout << "ESS: " << results.ESS << " (Explained Sum of Squares)\n";
     std::cout << "RSS: " << results.RSS << " (Residual Sum of Squares)\n";
     std::cout << "R-squared: " << results.R2 << "\n";
+    
+    // Calculate residual statistics
+    double sumResiduals = std::accumulate(results.residuals.begin(), results.residuals.end(), 0.0);
+    double avgResidual = sumResiduals / results.residuals.size();
+    double sumSqResiduals = 0.0;
+    for (double r : results.residuals) {
+        sumSqResiduals += r * r;
+    }
+    double rmse = sqrt(sumSqResiduals / results.residuals.size());
+    
+    std::cout << "Average Residual: " << avgResidual << "\n";
+    std::cout << "Root Mean Square Error (RMSE): " << rmse << "\n";
     std::cout << "\nInterpretation:\n";
     std::cout << "- For every $1 increase in Gold, " << commodityLabel << " increases by $" << results.beta1 << "\n";
     std::cout << "- Base " << commodityLabel << " price when Gold is $0: $" << results.beta0 << "\n";
     std::cout << "- Model explains " << (results.R2 * 100) << "% of " << commodityLabel << " price variation\n";
+    std::cout << "- Average prediction error: " << avgResidual << " (closer to 0 is better)\n";
 }
 
 void RegressionController::runCommodityRegression(const std::string& commodityName, 
@@ -45,6 +60,13 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
         
         // Calculate regression metrics
         RegressionMetrics results = RegressionAnalysis::calculateRegression(goldPrices, otherPrices);
+        
+        // Store residuals for analysis
+        results.residuals.resize(goldPrices.size());
+        for (size_t i = 0; i < goldPrices.size(); ++i) {
+            results.residuals[i] = otherPrices[i] - results.fittedValues[i];
+        }
+        
         displayResults(results, commodityLabel);
         
         // Ask to generate plots
