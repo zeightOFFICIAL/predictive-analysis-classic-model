@@ -1,8 +1,8 @@
 #include <iostream>
 #include <numeric> 
 #include <cmath>
-#include "RegressionController.h"
-#include "StockPricesRecordClass.h"
+#include "RegressionControl.h"
+#include "../Records/RecordClass.h"
 
 namespace {
     const std::string RED = "\033[31m";

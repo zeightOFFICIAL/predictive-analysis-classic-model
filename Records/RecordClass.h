@@ -1,5 +1,5 @@
-#ifndef STOCKPRICESRECORDCLASS_H
-#define STOCKPRICESRECORDCLASS_H
+#ifndef RECORDCLASS_H
+#define RECORDCLASS_H
 
 #include <string>
 #include <vector>
@@ -37,4 +37,4 @@ private:
     time_t parseDate(const std::string& dateStr) const;
 };
 
-#endif // STOCKPRICESRECORDCLASS_H
+#endif // RECORDCLASS_H

@@ -1,8 +1,8 @@
-#ifndef REGRESSIONCONTROLLER_H
-#define REGRESSIONCONTROLLER_H
+#ifndef REGRESSIONCONTROL_H
+#define REGRESSIONCONTROL_H
 
-#include "StatisticsController.h"
-#include "../Regression/RegressionAnalysis.h"
+#include "../Statistics/StatisticsControl.h"
+#include "RegressionClass.h"
 #include <string>
 
 class RegressionController {
@@ -20,4 +20,4 @@ private:
                        const std::string& commodityLabel) const;
 };
 
-#endif // REGRESSIONCONTROLLER_H
+#endif // REGRESSIONCONTROL_H

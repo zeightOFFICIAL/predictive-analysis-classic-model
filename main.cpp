@@ -3,12 +3,14 @@
 #include <iomanip>
 #include <limits>
 
-#include "Models/StockPricesRecordClass.h"
-#include "Models/StatisticsClass.h"
-#include "Controller/StockPricesRecordController.h"
-#include "Controller/StatisticsController.h"
-#include "Controller/RegressionController.h"
-#include "Regression/RegressionAnalysis.h"
+#include "Records/RecordClass.h"
+#include "Records/RecordControl.h"
+
+#include "Statistics/StatisticsClass.h"
+#include "Statistics/StatisticsControl.h"
+
+#include "Regression/RegressionControl.h"
+#include "Regression/RegressionClass.h"
 
 const std::string RED = "\033[31m";
 const std::string GREEN = "\033[32m";
@@ -19,7 +21,7 @@ const std::string CYAN = "\033[36m";
 const std::string RESET = "\033[0m";
 const std::string BOLD = "\033[1m";
 
-void displayMenu() {
+static void displayMenu() {
     std::cout << "\n" << BLUE << "=== COMMODITY ANALYSIS MENU ===" << RESET << "\n";
     std::cout << "1. View prices for specific date\n";
     std::cout << "2. Show dataset overview\n";
@@ -35,16 +37,16 @@ void displayMenu() {
     std::cout << "Enter your choice (0-9): ";
 }
 
-void displayCommodityMenu(const std::vector<std::string>& commodities) {
+static void displayItemsMenu(const std::vector<std::string>& items) {
     std::cout << "\n" << CYAN << "=== AVAILABLE COMMODITIES ===" << RESET << "\n";
-    for (size_t i = 0; i < commodities.size(); ++i) {
-        std::cout << i+1 << ". " << commodities[i] << "\n";
+    for (size_t i = 0; i < items.size(); ++i) {
+        std::cout << i+1 << ". " << items[i] << "\n";
     }
     std::cout << "0. Cancel\n";
     std::cout << "Select commodity: ";
 }
 
-void runCustomRegression(const StatisticsController& statsController, const RegressionController& regController) {
+static void runCustomRegression(const StatisticsController& statsController, const RegressionController& regController) {
     auto commodities = statsController.getAvailableCommodities();
     if (commodities.empty()) {
         std::cout << RED << "No commodities available for analysis!\n" << RESET;
@@ -56,7 +58,7 @@ void runCustomRegression(const StatisticsController& statsController, const Regr
         return;
     }
 
-    displayCommodityMenu(commodities);
+    displayItemsMenu(commodities);
     
     int choice;
     if (!(std::cin >> choice)) {
@@ -75,7 +77,6 @@ void runCustomRegression(const StatisticsController& statsController, const Regr
     const std::string& selectedCommodity = commodities[choice-1];
     std::string commodityLabel;
     
-    // Convert commodity codes to readable names
     if (selectedCommodity == StockPricesRecordClass::WTI_OIL) commodityLabel = "Crude Oil";
     else if (selectedCommodity == StockPricesRecordClass::SILVER) commodityLabel = "Silver";
     else if (selectedCommodity == StockPricesRecordClass::NATURAL_GAS) commodityLabel = "Natural Gas";

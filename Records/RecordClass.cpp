@@ -1,4 +1,4 @@
-#include "StockPricesRecordClass.h"
+#include "RecordClass.h"
 #include <fstream>
 #include <sstream>
 #include <iomanip>

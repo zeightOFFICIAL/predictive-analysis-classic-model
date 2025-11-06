@@ -1,4 +1,4 @@
-#include "RegressionAnalysis.h"
+#include "RegressionClass.h"
 #include <numeric>
 #include <cmath>
 #include <fstream>

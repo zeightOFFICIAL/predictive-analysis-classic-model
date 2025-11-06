@@ -1,4 +1,4 @@
-#include "StockPricesRecordController.h"
+#include "RecordControl.h"
 #include <iomanip>
 #include <iostream>
 #include <algorithm>

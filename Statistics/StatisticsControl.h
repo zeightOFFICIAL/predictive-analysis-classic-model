@@ -1,7 +1,7 @@
-#ifndef STATISTICSCONTROLLER_H
-#define STATISTICSCONTROLLER_H
+#ifndef STATISTICSCONTROL_H
+#define STATISTICSCONTROL_H
 
-#include "../Models/StatisticsClass.h"
+#include "StatisticsClass.h"
 #include <string>
 #include <vector>
 
@@ -41,4 +41,4 @@ private:
     std::string getCommodityName(const std::string& code) const;
 };
 
-#endif // STATISTICSCONTROLLER_H
+#endif // STATISTICSCONTROL_H

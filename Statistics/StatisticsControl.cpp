@@ -1,4 +1,4 @@
-#include "StatisticsController.h"
+#include "StatisticsControl.h"
 #include <iomanip>
 #include <iostream>
 #include <algorithm>

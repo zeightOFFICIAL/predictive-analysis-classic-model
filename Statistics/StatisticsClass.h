@@ -1,7 +1,7 @@
 #ifndef STATISTICSCLASS_H
 #define STATISTICSCLASS_H
 
-#include "StockPricesRecordClass.h"
+#include "../Records/RecordClass.h"
 #include <vector>
 #include <string>
 #include <map>
