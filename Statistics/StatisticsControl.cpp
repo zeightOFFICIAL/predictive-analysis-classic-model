@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <fstream>
 #include <math.h>
+#include <filesystem>
 
 namespace {
     const std::string RED = "\033[31m";
@@ -300,15 +301,26 @@ std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() co
 
 void StatisticsControl::generateScatterPlotsWithGNUplot() const {
     auto plotsData = preparePlotData();
+    if (plotsData.empty()) {
+        std::cout << YELLOW << "No plot data available!\n" << RESET;
+        return;
+    }
+
+    std::filesystem::create_directories("plots/correlation");
+
     exportPlotData(plotsData);
     
     for (const auto& plot : plotsData) {
         createGNUplotScript(plot);
         system("gnuplot plot_script.gp");
-        std::cout << "\nGenerated plot for Gold vs " << plot.commodity 
+        std::cout << "\nGenerated plot for Gold vs " << getCommodityName(plot.commodity) 
                   << " (correlation: " << std::fixed << std::setprecision(4)
-                  << plot.correlation << ")\n";
+                  << plot.correlation << ")";
+
+        std::filesystem::remove("plot_" + plot.commodity + ".dat");
     }
+
+    std::filesystem::remove("plot_script.gp");
 }
 
 void StatisticsControl::exportPlotData(const std::vector<PlotData>& allData) const {
@@ -334,12 +346,18 @@ std::string StatisticsControl::getCommodityName(const std::string& code) const {
     return code;
 }
 
+std::string StatisticsControl::getSanitizedCommodityName(const std::string& code) const {
+    std::string name = getCommodityName(code);
+    std::replace(name.begin(), name.end(), ' ', '_');
+    return name;
+}
+
 void StatisticsControl::createGNUplotScript(const PlotData& data) const {
     
     std::ofstream script("plot_script.gp");
     
     script << "set terminal pngcairo enhanced font 'Arial,12'\n";
-    script << "set output 'gold_vs_" << data.commodity << ".png'\n";
+    script << "set output 'plots/correlation/" << getSanitizedCommodityName(data.commodity) << ".png'\n";
     script << "set title 'Gold vs " << getCommodityName(data.commodity) 
            << " (r = " << std::fixed << std::setprecision(3) << data.correlation << ")'\n";
     script << "set xlabel 'Gold Price (USD)'\n";

@@ -4,6 +4,9 @@
 #include <fstream>
 #include <cstdio> 
 #include <stdexcept>
+#include <iomanip>
+#include <filesystem>
+#include <algorithm>
 
 RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>& X, const std::vector<double>& Y) {
     RegressionMetrics results;
@@ -36,6 +39,13 @@ RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>
     return results;
 }
 
+std::string RegressionClass::sanitizeFilename(const std::string& name) {
+    std::string sanitized = name;
+    std::replace(sanitized.begin(), sanitized.end(), ' ', '_');
+    std::transform(sanitized.begin(), sanitized.end(), sanitized.begin(), [](unsigned char c){ return std::tolower(c); });
+    return sanitized;
+}
+
 void RegressionClass::plotResiduals(
     const std::vector<double>& goldPrices,
     const std::vector<double>& otherPrices,
@@ -46,7 +56,11 @@ void RegressionClass::plotResiduals(
         throw std::invalid_argument("Input vectors must have the same size.");
     }
 
-    const std::string residualsFile = "residuals.dat";
+    std::string sanitized = sanitizeFilename(commodityName);
+
+    std::filesystem::create_directories("plots/regression/" + sanitized);
+
+    const std::string residualsFile = "residuals_" + sanitized + ".dat";
     std::ofstream out(residualsFile);
     if (!out) {
         throw std::runtime_error("Failed to open residuals data file.");
@@ -58,14 +72,14 @@ void RegressionClass::plotResiduals(
     }
     out.close();
 
-    const std::string scriptFile = "plot_residuals.gp";
+    const std::string scriptFile = "plot_residuals_" + sanitized + ".gp";
     std::ofstream script(scriptFile);
     if (!script) {
         throw std::runtime_error("Failed to create Gnuplot script.");
     }
 
     script << "set terminal pngcairo enhanced font 'Arial,12'\n"
-           << "set output 'residuals_" << commodityName << ".png'\n"
+           << "set output 'plots/regression/" << sanitized << "/residuals" << ".png'\n"
            << "set title 'Residuals Plot (" << commodityName << " vs Gold)'\n"
            << "set xlabel 'Gold Price (USD)'\n"
            << "set ylabel 'Residuals (Actual - Predicted)'\n"
@@ -94,7 +108,11 @@ void RegressionClass::generatePlot(
         throw std::invalid_argument("Input vectors must have the same size.");
     }
 
-    const std::string dataFilename = "regression.dat";
+    std::string sanitized = sanitizeFilename(commodityName);
+
+    std::filesystem::create_directories("plots/regression/" + sanitized);
+
+    const std::string dataFilename = "regression_" + sanitized + ".dat";
     std::ofstream dataFile(dataFilename);
     if (!dataFile.is_open()) {
         throw std::runtime_error("Failed to open data file for writing.");
@@ -106,20 +124,20 @@ void RegressionClass::generatePlot(
     }
     dataFile.close();
 
-    const std::string scriptFilename = "plot_regression.gp";
+    const std::string scriptFilename = "plot_regression_" + sanitized + ".gp";
     std::ofstream script(scriptFilename);
     if (!script.is_open()) {
         throw std::runtime_error("Failed to open Gnuplot script for writing.");
     }
 
     script << "set terminal pngcairo enhanced font 'Arial,12'\n"
-           << "set output 'regression_" << commodityName << ".png'\n"
-           << "set title '" << commodityName << " vs Gold Regression (R² = " << results.R2 << ")'\n"
+           << "set output 'plots/regression/" << sanitized << "/regression" << ".png'\n"
+           << "set title '" << commodityName << " vs Gold Regression (R² = " << std::fixed << std::setprecision(3) << results.R2 << ")'\n"
            << "set xlabel 'Gold Price (USD)'\n"
            << "set ylabel '" << commodityName << " Price (USD)'\n"
            << "set grid\n"
-           << "plot 'regression.dat' using 1:2 with points pt 7 ps 0.5 lc rgb 'blue' title 'Actual', \\\n"
-           << "     '' using 1:3 with lines lw 2 lc rgb 'red' title 'Fitted'\n";  // Reuse filename with ''
+           << "plot '" << dataFilename << "' using 1:2 with points pt 7 ps 0.5 lc rgb 'blue' title 'Actual', \\\n"
+           << "     '' using 1:3 with lines lw 2 lc rgb 'red' title 'Fitted'\n";
     script.close();
 
     int status = system(("gnuplot " + scriptFilename).c_str());

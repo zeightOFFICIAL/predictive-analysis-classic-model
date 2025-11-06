@@ -69,13 +69,13 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
         std::cin >> plotChoice;
         if (tolower(plotChoice) == 'y') {
             RegressionClass::generatePlot(goldPrices, otherPrices, results, commodityLabel);
-            std::cout << GREEN << "\nRegression plot saved as 'regression_" << commodityLabel << ".png'" << RESET << "\n";
+            std::cout << GREEN << "Regression plot saved in " << "*/regression" << ".png'" << RESET;
             
             std::cout << "\nGenerate residual plot? (y/n): ";
             std::cin >> plotChoice;
             if (tolower(plotChoice) == 'y') {
                 RegressionClass::plotResiduals(goldPrices, otherPrices, results, commodityLabel);
-                std::cout << GREEN << "\nResidual plot saved as 'residuals_" << commodityLabel << ".png'" << RESET << "\n";
+                std::cout << GREEN << "Residual plot saved in " << "*/residuals" << ".png'" << RESET;
             }
         }
         

@@ -24,4 +24,5 @@ public:
                            const std::vector<double>& otherPrices,
                            const RegressionMetrics& results,
                            const std::string& commodityName);
+    static std::string sanitizeFilename(const std::string& name);
 };

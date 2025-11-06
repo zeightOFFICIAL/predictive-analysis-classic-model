@@ -22,7 +22,7 @@ const std::string RESET = "\033[0m";
 const std::string BOLD = "\033[1m";
 
 static void displayMenu() {
-    std::cout << "\n" << GREEN_COLOR << "=== ----------------------------- ===" << RESET;
+    std::cout << "\n\n" << GREEN_COLOR << "=== ----------------------------- ===" << RESET;
     std::cout << "\n" << BLUE_COLOR << "====== COMMODITY ANALYSIS MENU ======" << RESET << "\n";
     std::cout << "1. View prices for specific date\n";
     std::cout << "2. Show dataset overview\n";
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::cout << GREEN_COLOR << "\nLoading market data from " << argv[1] << "..." << RESET << std::endl;
+    std::cout << GREEN_COLOR << "\nLoading market data from " << argv[1] << "..." << RESET;
     RecordClass data;
     if (!data.loadFromCSV(argv[1])) {
         std::cerr << RED_COLOR << "Failed to load data file!\n" << RESET;
@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
                 break;
 
             case 6:
-                std::cout << CYAN_COLOR << "\nGenerating scatter plots..." << RESET << std::endl;
+                std::cout << CYAN_COLOR << "\nGenerating scatter plots..." << RESET;
                 statsController.generateScatterPlotsWithGNUplot();
                 break;
 

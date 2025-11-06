@@ -39,6 +39,7 @@ private:
     void exportPlotData(const std::vector<PlotData>& allData) const;
     void createGNUplotScript(const PlotData& data) const;
     std::string getCommodityName(const std::string& code) const;
+    std::string getSanitizedCommodityName(const std::string& code) const;
 };
 
 #endif // STATISTICSCONTROL_H
