@@ -30,14 +30,16 @@ static void displayMenu() {
     std::cout << "4. Compare commodities\n";
     std::cout << "5. Analyze correlations with Gold\n";
     std::cout << "6. Generate correlation graphs\n";
-    std::cout << "7. Generate correlation matrix for all commodities\n";
+    std::cout << "7. Generate correlation matrix\n";
     std::cout << "\n" << MAGENTA_COLOR << "======== REGRESSION ANALYSIS ========" << RESET << "\n";
     std::cout << "8. Run Silver-Gold regression\n";
     std::cout << "9. Run Copper-Gold regression\n";
     std::cout << "10. Run custom commodity regression\n";
+    std::cout << "11. Run regression analysis (all predictors)\n";
+    std::cout << "12. Run regression analysis (significant predictors)\n";
     std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
-    std::cout << "11. Generate histograms for all commodities\n";
-    std::cout << "12. Generate boxplots for all commodities\n";
+    std::cout << "13. Generate histograms for all commodities\n";
+    std::cout << "134. Generate boxplots for all commodities\n";
     std::cout << "\n0. Exit program\n";
     std::cout << "Enter your choice (0-11): ";
 }
@@ -113,6 +115,7 @@ int main(int argc, char* argv[]) {
     StatisticsClass stats(data);
     StatisticsControl statsController(stats);
     RegressionControl regController(statsController);
+    const std::vector<std::string> significantPredictors = {"NG=F_closing_price"};
 
     int choice = 0;
     std::string input;
@@ -174,11 +177,19 @@ int main(int argc, char* argv[]) {
                 break;
 
             case 11:
+                regController.runMultipleRegressionAllCommodities();
+                break;
+
+            case 12:
+                regController.runMultipleRegressionSelected(significantPredictors);
+                break;
+
+            case 13:
                 std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
                 statsController.generateHistograms();
                 break;
 
-            case 12:
+            case 14:
                 std::cout << CYAN_COLOR << "\nGenerating boxplots..." << RESET << "\n";
                 statsController.generateBoxplots();
                 break;

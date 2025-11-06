@@ -23,6 +23,7 @@ public:
     void generateCorrelationMatrix() const;
     void generateCorrelationMatrixPlot(const std::vector<std::vector<double>>& correlationMatrix, const std::vector<std::string>& commodityNames) const;
     std::vector<double> getCommodityPrices(const std::string& commodity) const;
+    std::string getCommodityName(const std::string& code) const;
 
 private:
     const StatisticsClass& statsRef;
@@ -42,7 +43,7 @@ private:
     std::vector<PlotData> preparePlotData() const;
     void exportPlotData(const std::vector<PlotData>& allData) const;
     void createGNUplotScript(const PlotData& data) const;
-    std::string getCommodityName(const std::string& code) const;
+    
     std::string getSanitizedCommodityName(const std::string& code) const;
 };
 

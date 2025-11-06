@@ -13,6 +13,22 @@ struct RegressionMetrics {
     std::vector<double> residuals;    
 };
 
+struct MultipleRegressionMetrics {
+    std::vector<double> coefficients;
+    double R2;
+    double adjustedR2;
+    double Fstatistic;
+    double FpValue;
+    std::vector<double> tStatistics;
+    std::vector<double> tpValues;
+    std::vector<double> standardErrors;
+    std::vector<double> residuals;
+    std::vector<double> fittedValues;
+    double RSS;
+    double TSS;
+    double ESS;
+};
+
 class RegressionClass {
 public:
     static RegressionMetrics calculateRegression(const std::vector<double>& X, const std::vector<double>& Y);
@@ -25,4 +41,19 @@ public:
                            const RegressionMetrics& results,
                            const std::string& commodityName);
     static std::string sanitizeFilename(const std::string& name);
+
+    static MultipleRegressionMetrics calculateMultipleRegression(
+        const std::vector<std::vector<double>>& predictors,
+        const std::vector<double>& response);
+    
+    static void printMultipleRegressionResults(const MultipleRegressionMetrics& results,
+                                             const std::vector<std::string>& predictorNames);
+    
+    static double calculatePValue(double statistic, int df);
+    static double calculateFStatistic(double ESS, double RSS, int p, int n);
+    static std::string getSignificanceStars(double pValue);
+    static void calculateStandardErrors(MultipleRegressionMetrics& results,
+                                            const std::vector<std::vector<double>>& X,
+                                            const std::vector<double>& y);
+    static double calculatePValue(double statistic, int df1, int df2);
 };

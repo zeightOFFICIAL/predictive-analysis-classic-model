@@ -7,6 +7,9 @@
 #include <iomanip>
 #include <filesystem>
 #include <algorithm>
+#include <iostream>
+#include <string>
+#include <limits>
 
 RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>& X, const std::vector<double>& Y) {
     RegressionMetrics results;
@@ -45,6 +48,168 @@ std::string RegressionClass::sanitizeFilename(const std::string& name) {
     std::transform(sanitized.begin(), sanitized.end(), sanitized.begin(), [](unsigned char c){ return std::tolower(c); });
     return sanitized;
 }
+
+namespace LinearAlgebra {
+    
+std::vector<std::vector<double>> transpose(const std::vector<std::vector<double>>& matrix) {
+    if (matrix.empty()) return {};
+    
+    size_t rows = matrix.size();
+    size_t cols = matrix[0].size();
+    std::vector<std::vector<double>> result(cols, std::vector<double>(rows));
+    
+    for (size_t i = 0; i < rows; ++i) {
+        for (size_t j = 0; j < cols; ++j) {
+            result[j][i] = matrix[i][j];
+        }
+    }
+    return result;
+}
+
+std::vector<std::vector<double>> multiply(const std::vector<std::vector<double>>& A, 
+                                        const std::vector<std::vector<double>>& B) {
+    if (A.empty() || B.empty() || A[0].size() != B.size()) return {};
+    
+    size_t n = A.size();
+    size_t m = B[0].size();
+    size_t p = B.size();
+    
+    std::vector<std::vector<double>> result(n, std::vector<double>(m, 0.0));
+    
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < m; ++j) {
+            for (size_t k = 0; k < p; ++k) {
+                result[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<double> multiplyMatrixVector(const std::vector<std::vector<double>>& A, 
+                                       const std::vector<double>& v) {
+    if (A.empty() || v.empty() || A[0].size() != v.size()) return {};
+    
+    std::vector<double> result(A.size(), 0.0);
+    for (size_t i = 0; i < A.size(); ++i) {
+        for (size_t j = 0; j < v.size(); ++j) {
+            result[i] += A[i][j] * v[j];
+        }
+    }
+    return result;
+}
+
+// Gaussian elimination for matrix inversion
+std::vector<std::vector<double>> invertMatrix(const std::vector<std::vector<double>>& matrix) {
+    size_t n = matrix.size();
+    if (n == 0 || matrix[0].size() != n) return {};
+    
+    // Create augmented matrix [A|I]
+    std::vector<std::vector<double>> aug(n, std::vector<double>(2 * n, 0.0));
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            aug[i][j] = matrix[i][j];
+        }
+        aug[i][n + i] = 1.0;
+    }
+    
+    // Gaussian elimination with partial pivoting
+    for (size_t i = 0; i < n; ++i) {
+        // Partial pivoting
+        size_t maxRow = i;
+        double maxVal = std::abs(aug[i][i]);
+        for (size_t k = i + 1; k < n; ++k) {
+            if (std::abs(aug[k][i]) > maxVal) {
+                maxVal = std::abs(aug[k][i]);
+                maxRow = k;
+            }
+        }
+        
+        if (maxVal < 1e-12) {
+            return {}; // Matrix is singular
+        }
+        
+        if (maxRow != i) {
+            std::swap(aug[i], aug[maxRow]);
+        }
+        
+        // Normalize the pivot row
+        double pivot = aug[i][i];
+        for (size_t j = 0; j < 2 * n; ++j) {
+            aug[i][j] /= pivot;
+        }
+        
+        // Eliminate other rows
+        for (size_t k = 0; k < n; ++k) {
+            if (k != i) {
+                double factor = aug[k][i];
+                for (size_t j = 0; j < 2 * n; ++j) {
+                    aug[k][j] -= factor * aug[i][j];
+                }
+            }
+        }
+    }
+    
+    // Extract the inverse matrix
+    std::vector<std::vector<double>> inverse(n, std::vector<double>(n));
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            inverse[i][j] = aug[i][n + j];
+        }
+    }
+    
+    return inverse;
+}
+
+// Robust OLS solver with regularization
+std::vector<double> solveOLS(const std::vector<std::vector<double>>& X, 
+                           const std::vector<double>& y, double lambda = 0.01) {
+    size_t n = X.size();
+    size_t p = X[0].size();
+    
+    if (n == 0 || p == 0 || n != y.size()) {
+        return {};
+    }
+    
+    // X'X with regularization (ridge regression for stability)
+    std::vector<std::vector<double>> XTX(p, std::vector<double>(p, 0.0));
+    for (size_t i = 0; i < p; ++i) {
+        for (size_t j = 0; j < p; ++j) {
+            for (size_t k = 0; k < n; ++k) {
+                XTX[i][j] += X[k][i] * X[k][j];
+            }
+            // Add regularization to diagonal
+            if (i == j) {
+                XTX[i][j] += lambda;
+            }
+        }
+    }
+    
+    // X'y
+    std::vector<double> XTy(p, 0.0);
+    for (size_t i = 0; i < p; ++i) {
+        for (size_t k = 0; k < n; ++k) {
+            XTy[i] += X[k][i] * y[k];
+        }
+    }
+    
+    // Solve using matrix inversion
+    auto invXTX = invertMatrix(XTX);
+    if (invXTX.empty()) {
+        return {};
+    }
+    
+    std::vector<double> beta(p, 0.0);
+    for (size_t i = 0; i < p; ++i) {
+        for (size_t j = 0; j < p; ++j) {
+            beta[i] += invXTX[i][j] * XTy[j];
+        }
+    }
+    
+    return beta;
+}
+
+} // namespace LinearAlgebra
 
 void RegressionClass::plotResiduals(
     const std::vector<double>& goldPrices,
@@ -98,6 +263,14 @@ void RegressionClass::plotResiduals(
     std::remove(scriptFile.c_str());
 }
 
+std::string RegressionClass::getSignificanceStars(double pValue) {
+    if (pValue < 0.001) return "***";
+    if (pValue < 0.01) return "**";
+    if (pValue < 0.05) return "*";
+    if (pValue < 0.1) return ".";
+    return "not sig";
+}
+
 void RegressionClass::generatePlot(
     const std::vector<double>& goldPrices,
     const std::vector<double>& otherPrices,
@@ -147,4 +320,251 @@ void RegressionClass::generatePlot(
 
     std::remove(dataFilename.c_str());
     std::remove(scriptFilename.c_str());
+}
+
+void RegressionClass::calculateStandardErrors(MultipleRegressionMetrics& results,
+                                            const std::vector<std::vector<double>>& X,
+                                            const std::vector<double>& y) {
+    size_t n = X.size();
+    size_t p = X[0].size();
+    
+    if (n <= p || results.RSS < 1e-10) {
+        return;
+    }
+    
+    // Calculate MSE
+    double mse = results.RSS / (n - p);
+    
+    // Calculate (X'X)^-1
+    auto XT = LinearAlgebra::transpose(X);
+    auto XTX = LinearAlgebra::multiply(XT, X);
+    auto invXTX = LinearAlgebra::invertMatrix(XTX);
+    
+    if (invXTX.empty()) {
+        std::cout << "Warning: Could not invert X'X matrix, using simplified SE calculation\n";
+        // Fallback: use simplified standard errors
+        results.standardErrors.resize(p, std::sqrt(mse));
+        results.tStatistics.resize(p, 0.0);
+        results.tpValues.resize(p, 1.0);
+        return;
+    }
+    
+    // Calculate standard errors: SE = sqrt(MSE * diag((X'X)^-1))
+    results.standardErrors.resize(p);
+    results.tStatistics.resize(p);
+    results.tpValues.resize(p);
+    
+    for (size_t i = 0; i < p; ++i) {
+        results.standardErrors[i] = std::sqrt(mse * std::max(invXTX[i][i], 0.0));
+        
+        if (results.standardErrors[i] > 1e-10) {
+            results.tStatistics[i] = results.coefficients[i] / results.standardErrors[i];
+            results.tpValues[i] = calculatePValue(std::abs(results.tStatistics[i]), 1, n - p);
+        } else {
+            results.tStatistics[i] = 0.0;
+            results.tpValues[i] = 1.0;
+        }
+    }
+}
+
+double RegressionClass::calculatePValue(double statistic, int df1, int df2) {
+    if (df1 <= 0 || df2 <= 0) return 1.0;
+    
+    // Simplified p-value calculation using t-distribution approximation
+    // For more accuracy, use proper statistical libraries in production
+    
+    if (statistic > 3.5) return 0.0005;
+    if (statistic > 3.0) return 0.001;
+    if (statistic > 2.8) return 0.005;
+    if (statistic > 2.5) return 0.01;
+    if (statistic > 2.0) return 0.05;
+    if (statistic > 1.7) return 0.09;
+    if (statistic > 1.3) return 0.2;
+    return 0.3;
+}
+
+void RegressionClass::printMultipleRegressionResults(
+    const MultipleRegressionMetrics& results,
+    const std::vector<std::string>& predictorNames) {
+    
+    std::cout << "\n" << "=== MULTIPLE REGRESSION RESULTS ===" << "\n";
+    
+    // Regression equation
+    std::cout << "\nRegression Equation:\n";
+    std::cout << "Gold Price = " << std::fixed << std::setprecision(6) << results.coefficients[0];
+    for (size_t i = 1; i < results.coefficients.size(); ++i) {
+        std::string sign = (results.coefficients[i] >= 0) ? " + " : " - ";
+        std::string predName = (i - 1 < predictorNames.size()) ? predictorNames[i - 1] : "X" + std::to_string(i);
+        std::cout << sign << std::abs(results.coefficients[i]) << " × " << predName;
+    }
+    std::cout << "\n";
+    
+    // Model quality
+    std::cout << "\n" << "Model Quality Metrics:" << "\n";
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << "R-squared: " << results.R2 << " (" << (results.R2 * 100) << "%)\n";
+    std::cout << "Adjusted R-squared: " << results.adjustedR2 << "\n";
+    std::cout << "F-statistic: " << results.Fstatistic << " (p-value: " << results.FpValue << ")\n";
+    std::cout << "Total Observations: " << results.fittedValues.size() << "\n";
+    std::cout << "Number of Predictors: " << (results.coefficients.size() - 1) << "\n";
+    
+    // Sums of squares
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "Total Sum of Squares (TSS): " << results.TSS << "\n";
+    std::cout << "Explained Sum of Squares (ESS): " << results.ESS << "\n";
+    std::cout << "Residual Sum of Squares (RSS): " << results.RSS << "\n";
+    
+    // Coefficient significance table
+    std::cout << "\n" << "Coefficient Significance:" << "\n";
+    std::cout << std::left << std::setw(15) << "Variable" 
+              << std::setw(15) << "Coefficient" 
+              << std::setw(12) << "Std Error" 
+              << std::setw(10) << "t-stat" 
+              << std::setw(12) << "p-value" 
+              << "Significance\n";
+    
+    std::cout << std::string(70, '-') << "\n";
+    
+    // Format intercept
+    std::string sig = getSignificanceStars(results.tpValues[0]);
+    std::cout << std::left << std::setw(15) << "Intercept"
+              << std::fixed << std::setprecision(6) << std::setw(15) << results.coefficients[0]
+              << std::setw(12) << results.standardErrors[0]
+              << std::setw(10) << results.tStatistics[0]
+              << std::setw(12) << results.tpValues[0]
+              << sig << "\n";
+    
+    // Format predictors
+    for (size_t i = 1; i < results.coefficients.size(); ++i) {
+        std::string varName = (i - 1 < predictorNames.size()) ? 
+                            predictorNames[i - 1] : "Predictor" + std::to_string(i);
+        sig = getSignificanceStars(results.tpValues[i]);
+        
+        std::cout << std::left << std::setw(15) << varName
+                  << std::setw(15) << results.coefficients[i]
+                  << std::setw(12) << results.standardErrors[i]
+                  << std::setw(10) << results.tStatistics[i]
+                  << std::setw(12) << results.tpValues[i]
+                  << sig << "\n";
+    }
+}
+
+MultipleRegressionMetrics RegressionClass::calculateMultipleRegression(
+    const std::vector<std::vector<double>>& predictors,
+    const std::vector<double>& response) {
+    
+    MultipleRegressionMetrics results;
+    
+    if (predictors.empty() || response.empty()) {
+        std::cerr << "Error: Empty predictors or response vector\n";
+        return results;
+    }
+    
+    size_t n = response.size();
+    size_t p = predictors.size();
+    
+    // Validate predictor sizes
+    for (const auto& predictor : predictors) {
+        if (predictor.size() != n) {
+            std::cerr << "Error: Predictor size mismatch. Expected: " << n 
+                      << ", Got: " << predictor.size() << "\n";
+            return results;
+        }
+    }
+    
+    std::cout << "Calculating multiple regression with " << n 
+              << " observations and " << p << " predictors..."  << "\n";
+    
+    // Scale predictors to improve numerical stability
+    std::vector<std::vector<double>> scaledPredictors = predictors;
+    std::vector<double> means(p, 0.0);
+    std::vector<double> stddevs(p, 1.0);
+    
+    for (size_t j = 0; j < p; ++j) {
+        double mean = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            mean += scaledPredictors[j][i];
+        }
+        means[j] = mean / n;
+        
+        double variance = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            variance += (scaledPredictors[j][i] - means[j]) * (scaledPredictors[j][i] - means[j]);
+        }
+        stddevs[j] = std::sqrt(variance / (n - 1));
+        
+        // Standardize predictors
+        if (stddevs[j] > 1e-10) {
+            for (size_t i = 0; i < n; ++i) {
+                scaledPredictors[j][i] = (scaledPredictors[j][i] - means[j]) / stddevs[j];
+            }
+        }
+    }
+    
+    // Create design matrix with intercept
+    std::vector<std::vector<double>> X(n, std::vector<double>(p + 1, 1.0));
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < p; ++j) {
+            X[i][j + 1] = scaledPredictors[j][i];
+        }
+    }
+    
+    // Calculate coefficients using regularized OLS for stability
+    results.coefficients = LinearAlgebra::solveOLS(X, response, 0.1);
+    if (results.coefficients.empty()) {
+        std::cerr <<"Error: Failed to calculate OLS coefficients\n";
+        return results;
+    }
+    
+    // Rescale coefficients back to original units
+    for (size_t j = 1; j <= p; ++j) {
+        if (stddevs[j-1] > 1e-10) {
+            results.coefficients[j] /= stddevs[j-1];
+            results.coefficients[0] -= results.coefficients[j] * means[j-1];
+        }
+    }
+    
+    // Calculate fitted values and residuals
+    results.fittedValues.resize(n);
+    results.residuals.resize(n);
+    
+    double y_mean = std::accumulate(response.begin(), response.end(), 0.0) / n;
+    
+    results.TSS = 0.0;
+    results.RSS = 0.0;
+    
+    for (size_t i = 0; i < n; ++i) {
+        double y_pred = results.coefficients[0];
+        for (size_t j = 0; j < p; ++j) {
+            y_pred += results.coefficients[j + 1] * predictors[j][i];
+        }
+        results.fittedValues[i] = y_pred;
+        
+        double residual = response[i] - y_pred;
+        results.residuals[i] = residual;
+        
+        results.TSS += (response[i] - y_mean) * (response[i] - y_mean);
+        results.RSS += residual * residual;
+    }
+    
+    results.ESS = results.TSS - results.RSS;
+    results.R2 = (results.TSS > 1e-10) ? (results.ESS / results.TSS) : 0.0;
+    
+    // Adjusted R²
+    if (n > p + 1) {
+        results.adjustedR2 = 1.0 - (1.0 - results.R2) * (static_cast<double>(n) - 1) / (n - p - 1);
+    } else {
+        results.adjustedR2 = results.R2;
+    }
+    
+    // F-statistic
+    if (p > 0 && n > p + 1 && results.RSS > 1e-10) {
+        results.Fstatistic = (results.ESS / p) / (results.RSS / (n - p - 1));
+        results.FpValue = calculatePValue(results.Fstatistic, p, n - p - 1);
+    }
+    
+    // Calculate proper standard errors and t-statistics
+    calculateStandardErrors(results, X, response);
+    
+    return results;
 }
