@@ -130,8 +130,12 @@ void StatisticsControl::showCommodityAnalysis(const std::string& commodityName) 
     printStatisticRow("IQR", stat.iqr);
     
     std::cout << std::left << std::setw(20) << "Distribution Shape" << ": "
-              << "Skewness=" << stat.skewness << " (" << interpretSkewness(stat.skewness) << "), "
-              << "Kurtosis=" << stat.kurtosis << " (" << interpretKurtosis(stat.kurtosis) << ")\n";
+              << "Skewness= " << YELLOW << stat.skewness << RESET << " (" << interpretSkewness(stat.skewness) << "), "
+              << "Kurtosis= " << YELLOW << stat.kurtosis << RESET << " (" << interpretKurtosis(stat.kurtosis) << ")\n";
+
+    std::cout << std::left << std::setw(20) << "Shapiro-Wilk" << ": "
+              << "Shapiro W= " << YELLOW << stat.shapiroW << RESET << ", "
+              << "Shapiro p= " << YELLOW << stat.shapiroP << RESET << " (" << stat.normality << ")\n";
 }
 
 void StatisticsControl::showComparativeAnalysis() const {

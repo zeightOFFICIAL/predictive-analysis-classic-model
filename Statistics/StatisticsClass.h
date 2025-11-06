@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <tuple>
 
 class StatisticsClass {
 public:
@@ -23,7 +24,12 @@ public:
         
         double skewness = 0.0;
         double kurtosis = 0.0;
+
+        double shapiroW = 0.0;
+        double shapiroP = 0.0;
         
+        std::string normality;
+
         size_t count = 0;
     };
 
@@ -40,6 +46,7 @@ public:
     static double calculateSkewness(const std::vector<double>& values, double mean, double stdDev);
     static double calculateKurtosis(const std::vector<double>& values, double mean, double stdDev);
     std::vector<double> calculateQuartiles(std::vector<double> values) const;
+    static std::tuple<double, double, std::string> performShapiroWilkTest(const std::vector<double>& values);
 
     std::map<std::string, double> calculateGoldCorrelations() const;
     static double calculatePearsonCorrelation(const std::vector<double>& x, const std::vector<double>& y);
