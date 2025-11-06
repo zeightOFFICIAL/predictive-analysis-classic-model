@@ -395,7 +395,7 @@ void StatisticsControl::generateHistograms() const {
         }
 
         size_t binCount = static_cast<size_t>(1 + 3.322 * log10(prices.size()));
-        binCount = std::max(static_cast<size_t>(5), std::min(binCount, static_cast<size_t>(30))); // 5-30 bins
+        binCount = std::max(static_cast<size_t>(5), std::min(binCount, static_cast<size_t>(30)));
         
         auto [minIt, maxIt] = std::minmax_element(prices.begin(), prices.end());
         double minPrice = *minIt;
@@ -546,6 +546,180 @@ void StatisticsControl::generateBoxplots() const {
         std::remove(outFile.c_str());
         std::remove(scriptFile.c_str());
     }
+}
+
+void StatisticsControl::generateCorrelationMatrix() const {
+    auto commodities = statsRef.getAvailableCommodities();
+    if (commodities.empty()) {
+        std::cout << YELLOW << "No data available for correlation matrix!\n" << RESET;
+        return;
+    }
+
+    printSectionHeader("CORRELATION MATRIX - ALL COMMODITIES");
+
+    std::vector<std::vector<double>> allPrices;
+    std::vector<std::string> commodityNames;
+    
+    for (const auto& commodity : commodities) {
+        auto prices = getCommodityPrices(commodity);
+        if (!prices.empty()) {
+            allPrices.push_back(prices);
+            commodityNames.push_back(getCommodityName(commodity));
+        }
+    }
+
+    size_t n = allPrices.size();
+    if (n < 2) {
+        std::cout << YELLOW << "Need at least 2 commodities with data for correlation matrix\n" << RESET;
+        return;
+    }
+
+    std::vector<std::vector<double>> correlationMatrix(n, std::vector<double>(n, 0.0));
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            if (i == j) {
+                correlationMatrix[i][j] = 1.0;
+            } else {
+                size_t minSize = std::min(allPrices[i].size(), allPrices[j].size());
+                if (minSize < 2) {
+                    correlationMatrix[i][j] = 0.0;
+                    continue;
+                }
+
+                std::vector<double> x(minSize), y(minSize);
+                std::copy(allPrices[i].begin(), allPrices[i].begin() + minSize, x.begin());
+                std::copy(allPrices[j].begin(), allPrices[j].begin() + minSize, y.begin());
+                
+                correlationMatrix[i][j] = StatisticsClass::calculatePearsonCorrelation(x, y);
+            }
+        }
+    }
+
+    const int nameWidth = 15;
+    const int valueWidth = 10;
+
+    std::cout << std::left << std::setw(nameWidth) << "";
+    for (size_t i = 0; i < n; ++i) {
+        std::string shortName = commodityNames[i].substr(0, nameWidth - 1);
+        std::cout << std::setw(valueWidth) << shortName;
+    }
+    std::cout << "\n" << std::string(nameWidth + n * valueWidth, '-') << "\n";
+
+    for (size_t i = 0; i < n; ++i) {
+        std::cout << std::left << std::setw(nameWidth) 
+                  << commodityNames[i].substr(0, nameWidth - 1);
+        
+        for (size_t j = 0; j < n; ++j) {
+            double corr = correlationMatrix[i][j];
+            std::string color = RESET;
+            
+            if (i != j) {
+                if (corr >= 0.7) color = GREEN;
+                else if (corr >= 0.3) color = CYAN;
+                else if (corr >= 0.1) color = YELLOW;
+                else if (corr <= -0.7) color = RED;
+                else if (corr <= -0.3) color = MAGENTA;
+                else if (corr <= -0.1) color = YELLOW;
+            }
+
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(3) << corr;
+            std::cout << color << std::setw(valueWidth) << oss.str() << RESET;
+        }
+        std::cout << "\n";
+    }
+
+    generateCorrelationMatrixPlot(correlationMatrix, commodityNames);
+}
+
+void StatisticsControl::generateCorrelationMatrixPlot(
+    const std::vector<std::vector<double>>& correlationMatrix,
+    const std::vector<std::string>& commodityNames) const {
+    
+    std::filesystem::create_directories("plots/correlation");
+
+    std::ofstream dataFile("correlation_matrix.dat");
+    if (!dataFile) {
+        std::cerr << RED << "Failed to create correlation data file!\n" << RESET;
+        return;
+    }
+
+    size_t n = correlationMatrix.size();
+    
+    dataFile << "# Correlation Matrix Data\n";
+    dataFile << "# ";
+    for (size_t i = 0; i < n; ++i) {
+        dataFile << commodityNames[i];
+        if (i < n - 1) dataFile << " | ";
+    }
+    dataFile << "\n";
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            dataFile << std::fixed << std::setprecision(6) 
+                     << correlationMatrix[i][j];
+            if (j < n - 1) dataFile << " ";
+        }
+        dataFile << "\n";
+    }
+    dataFile.close();
+
+    std::ofstream script("correlation_heatmap.gp");
+    if (!script) {
+        std::cerr << RED << "Failed to create GNUplot script!\n" << RESET;
+        return;
+    }
+
+    script << "set terminal pngcairo enhanced font 'Arial,12' size 1000,800\n";
+    script << "set output 'plots/correlation/Matrix.png'\n";
+    script << "set title 'Commodity Correlation Matrix Heatmap'\n";
+    script << "unset key\n";
+    script << "set tic scale 0\n";
+    
+    script << "set palette defined (-1 'yellow', 0 'white', 1 'green')\n";
+    script << "set cbrange [-1:1]\n";
+    script << "set cblabel 'Correlation Coefficient'\n";
+    
+    script << "set view map\n";
+    script << "set size ratio 1\n";
+    
+    script << "set xtics border in scale 0,0.001 autojustify\n";
+    script << "set ytics border in scale 0,0.001 autojustify\n";
+    script << "set xrange [-0.5:" << (n - 0.5) << "]\n";
+    script << "set yrange [-0.5:" << (n - 0.5) << "]\n";
+    
+    script << "set xtics rotate by 45 right\n";
+    
+    script << "set xtics (";
+    for (size_t i = 0; i < n; ++i) {
+        script << "\"" << commodityNames[i] << "\" " << i;
+        if (i < n - 1) script << ", ";
+    }
+    script << ")\n";
+    
+    script << "set ytics (";
+    for (size_t i = 0; i < n; ++i) {
+        script << "\"" << commodityNames[i] << "\" " << i;
+        if (i < n - 1) script << ", ";
+    }
+    script << ")\n";
+    
+    script << "plot 'correlation_matrix.dat' matrix with image, \\\n";
+    script << "     '' matrix using 1:2:($3 >= 0 ? sprintf('%.3f', $3) : '') with labels font 'Arial,8' center, \\\n";
+    script << "     '' matrix using 1:2:($3 < 0 ? sprintf('%.3f', $3) : '') with labels font 'Arial,8' center\n";
+
+    script.close();
+
+    int result = system("gnuplot correlation_heatmap.gp");
+    if (result == 0) {
+        std::cout << GREEN << "Correlation matrix heatmap saved to: plots/correlation/Matrix.png" << RESET << "\n";
+    } else {
+        std::cerr << YELLOW << "GNUplot execution failed. Make sure GNUplot is installed.\n" << RESET;
+    }
+
+    std::filesystem::remove("correlation_matrix.dat");
+    std::filesystem::remove("correlation_heatmap.gp");
 }
 
 std::vector<double> StatisticsControl::getCommodityPrices(const std::string& commodity) const {

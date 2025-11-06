@@ -30,13 +30,14 @@ static void displayMenu() {
     std::cout << "4. Compare commodities\n";
     std::cout << "5. Analyze correlations with Gold\n";
     std::cout << "6. Generate correlation graphs\n";
+    std::cout << "7. Generate correlation matrix for all commodities\n";
     std::cout << "\n" << MAGENTA_COLOR << "======== REGRESSION ANALYSIS ========" << RESET << "\n";
-    std::cout << "7. Run Silver-Gold regression\n";
-    std::cout << "8. Run Copper-Gold regression\n";
-    std::cout << "9. Run custom commodity regression\n";
+    std::cout << "8. Run Silver-Gold regression\n";
+    std::cout << "9. Run Copper-Gold regression\n";
+    std::cout << "10. Run custom commodity regression\n";
     std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
-    std::cout << "10. Generate histograms for all commodities\n";
-    std::cout << "11. Generate boxplots for all commodities\n";
+    std::cout << "11. Generate histograms for all commodities\n";
+    std::cout << "12. Generate boxplots for all commodities\n";
     std::cout << "\n0. Exit program\n";
     std::cout << "Enter your choice (0-11): ";
 }
@@ -160,26 +161,31 @@ int main(int argc, char* argv[]) {
                 statsController.generateScatterPlotsWithGNUplot();
                 break;
 
-            case 7:
+            case 8:
                 regController.runSilverGoldRegression();
                 break;
 
-            case 8:
+            case 9:
                 regController.runCopperGoldRegression();
                 break;
 
-            case 9:
+            case 10:
                 runCustomRegression(statsController, regController);
                 break;
 
-            case 10:
+            case 11:
                 std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
                 statsController.generateHistograms();
                 break;
 
-            case 11:
+            case 12:
                 std::cout << CYAN_COLOR << "\nGenerating boxplots..." << RESET << "\n";
                 statsController.generateBoxplots();
+                break;
+
+            case 7:
+                std::cout << CYAN_COLOR << "\nGenerating correlation matrix..." << RESET << "\n";
+                statsController.generateCorrelationMatrix();
                 break;
 
             case 0:

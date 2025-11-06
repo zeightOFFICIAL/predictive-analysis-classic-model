@@ -20,6 +20,8 @@ public:
     void generateScatterPlotsWithGNUplot() const;
     void generateHistograms() const;
     void generateBoxplots() const;
+    void generateCorrelationMatrix() const;
+    void generateCorrelationMatrixPlot(const std::vector<std::vector<double>>& correlationMatrix, const std::vector<std::string>& commodityNames) const;
     std::vector<double> getCommodityPrices(const std::string& commodity) const;
 
 private:
