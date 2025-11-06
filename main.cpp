@@ -77,15 +77,15 @@ static void runCustomRegression(const StatisticsControl& statsControl, const Reg
     const std::string& selectedCommodity = items[choice-1];
     std::string commodityLabel;
     
-    if (selectedCommodity == StockPricesRecordClass::WTI_OIL) commodityLabel = "Crude Oil";
-    else if (selectedCommodity == StockPricesRecordClass::SILVER) commodityLabel = "Silver";
-    else if (selectedCommodity == StockPricesRecordClass::NATURAL_GAS) commodityLabel = "Natural Gas";
-    else if (selectedCommodity == StockPricesRecordClass::CORN) commodityLabel = "Corn";
-    else if (selectedCommodity == StockPricesRecordClass::WHEAT) commodityLabel = "Wheat";
-    else if (selectedCommodity == StockPricesRecordClass::SOYBEAN) commodityLabel = "Soybean";
-    else if (selectedCommodity == StockPricesRecordClass::COPPER) commodityLabel = "Copper";
-    else if (selectedCommodity == StockPricesRecordClass::PLATINUM) commodityLabel = "Platinum";
-    else if (selectedCommodity == StockPricesRecordClass::PALLADIUM) commodityLabel = "Palladium";
+    if (selectedCommodity == RecordClass::WTI_OIL) commodityLabel = "Crude Oil";
+    else if (selectedCommodity == RecordClass::SILVER) commodityLabel = "Silver";
+    else if (selectedCommodity == RecordClass::NATURAL_GAS) commodityLabel = "Natural Gas";
+    else if (selectedCommodity == RecordClass::CORN) commodityLabel = "Corn";
+    else if (selectedCommodity == RecordClass::WHEAT) commodityLabel = "Wheat";
+    else if (selectedCommodity == RecordClass::SOYBEAN) commodityLabel = "Soybean";
+    else if (selectedCommodity == RecordClass::COPPER) commodityLabel = "Copper";
+    else if (selectedCommodity == RecordClass::PLATINUM) commodityLabel = "Platinum";
+    else if (selectedCommodity == RecordClass::PALLADIUM) commodityLabel = "Palladium";
     else commodityLabel = selectedCommodity;
 
     regControl.runCommodityRegression(selectedCommodity, commodityLabel);
@@ -99,13 +99,13 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << GREEN_COLOR << "\nLoading market data from " << argv[1] << "..." << RESET << std::endl;
-    StockPricesRecordClass data;
+    RecordClass data;
     if (!data.loadFromCSV(argv[1])) {
         std::cerr << RED_COLOR << "Failed to load data file!\n" << RESET;
         return 1;
     }
 
-    StockPricesRecordController recordController(data);
+    RecordControl recordController(data);
     StatisticsClass stats(data);
     StatisticsControl statsController(stats);
     RegressionControl regController(statsController);

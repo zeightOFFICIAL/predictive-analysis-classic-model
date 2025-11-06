@@ -6,7 +6,7 @@
 #include <map>
 #include <ctime>
 
-class StockPricesRecordClass {
+class RecordClass {
 public:
     static const std::string WTI_OIL;
     static const std::string GOLD;

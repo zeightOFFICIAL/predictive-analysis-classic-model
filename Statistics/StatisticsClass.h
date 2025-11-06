@@ -27,10 +27,10 @@ public:
         size_t count = 0;
     };
 
-    explicit StatisticsClass(const StockPricesRecordClass& stockData);
+    explicit StatisticsClass(const RecordClass& stockData);
     void calculateAll();
     
-    const StockPricesRecordClass& getDataRef() const { return dataRef; }
+    const RecordClass& getDataRef() const { return dataRef; }
     const Statistics& getStatistics(const std::string& commodityName) const;
     std::vector<std::string> getAvailableCommodities() const;
     
@@ -43,7 +43,7 @@ public:
     std::map<std::string, double> calculateGoldCorrelations() const;
     static double calculatePearsonCorrelation(const std::vector<double>& x, const std::vector<double>& y);
 private:
-    const StockPricesRecordClass& dataRef;
+    const RecordClass& dataRef;
     std::map<std::string, Statistics> statisticsMap;
     
     std::vector<double> calculateModes(const std::vector<double>& values) const;

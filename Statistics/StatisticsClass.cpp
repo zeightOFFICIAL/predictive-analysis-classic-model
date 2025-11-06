@@ -4,7 +4,7 @@
 #include <cmath>
 #include <map>
 
-StatisticsClass::StatisticsClass(const StockPricesRecordClass& stockData)
+StatisticsClass::StatisticsClass(const RecordClass& stockData)
     : dataRef(stockData) {
     calculateAll();
 }
@@ -158,7 +158,7 @@ double StatisticsClass::calculatePercentile(const std::vector<double>& sortedVal
 std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const {
     std::map<std::string, double> correlations;
     
-    auto goldPricesMap = dataRef.getAllPrices(StockPricesRecordClass::GOLD);
+    auto goldPricesMap = dataRef.getAllPrices(RecordClass::GOLD);
     std::vector<double> goldPrices;
     for (const auto& [_, price] : goldPricesMap) {
         goldPrices.push_back(price);
@@ -167,7 +167,7 @@ std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const
     auto commodities = dataRef.getAllCommodities();
     
     for (const auto& commodity : commodities) {
-        if (commodity == StockPricesRecordClass::GOLD) continue; 
+        if (commodity == RecordClass::GOLD) continue; 
         
         auto pricesMap = dataRef.getAllPrices(commodity);
         std::vector<double> commodityPrices;

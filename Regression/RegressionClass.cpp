@@ -5,7 +5,7 @@
 #include <cstdio> 
 #include <stdexcept>
 
-RegressionMetrics RegressionAnalysis::calculateRegression(const std::vector<double>& X, const std::vector<double>& Y) {
+RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>& X, const std::vector<double>& Y) {
     RegressionMetrics results;
     const size_t n = X.size();
     
@@ -36,7 +36,7 @@ RegressionMetrics RegressionAnalysis::calculateRegression(const std::vector<doub
     return results;
 }
 
-void RegressionAnalysis::plotResiduals(
+void RegressionClass::plotResiduals(
     const std::vector<double>& goldPrices,
     const std::vector<double>& otherPrices,
     const RegressionMetrics& results,
@@ -84,7 +84,7 @@ void RegressionAnalysis::plotResiduals(
     std::remove(scriptFile.c_str());
 }
 
-void RegressionAnalysis::generatePlot(
+void RegressionClass::generatePlot(
     const std::vector<double>& goldPrices,
     const std::vector<double>& otherPrices,
     const RegressionMetrics& results,

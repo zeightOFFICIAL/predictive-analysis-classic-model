@@ -47,7 +47,7 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
     std::cout << CYAN << "\nRunning " << commodityLabel << "-Gold Regression Analysis..." << RESET << std::endl;
     
     try {
-        auto goldPrices = statsController.getCommodityPrices(StockPricesRecordClass::GOLD);
+        auto goldPrices = statsController.getCommodityPrices(RecordClass::GOLD);
         auto otherPrices = statsController.getCommodityPrices(commodityName);
         
         if (goldPrices.empty() || otherPrices.empty()) {
@@ -55,7 +55,7 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
             return;
         }
         
-        RegressionMetrics results = RegressionAnalysis::calculateRegression(goldPrices, otherPrices);
+        RegressionMetrics results = RegressionClass::calculateRegression(goldPrices, otherPrices);
         
         results.residuals.resize(goldPrices.size());
         for (size_t i = 0; i < goldPrices.size(); ++i) {
@@ -68,13 +68,13 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
         char plotChoice;
         std::cin >> plotChoice;
         if (tolower(plotChoice) == 'y') {
-            RegressionAnalysis::generatePlot(goldPrices, otherPrices, results, commodityLabel);
+            RegressionClass::generatePlot(goldPrices, otherPrices, results, commodityLabel);
             std::cout << GREEN << "\nRegression plot saved as 'regression_" << commodityLabel << ".png'" << RESET << "\n";
             
             std::cout << "\nGenerate residual plot? (y/n): ";
             std::cin >> plotChoice;
             if (tolower(plotChoice) == 'y') {
-                RegressionAnalysis::plotResiduals(goldPrices, otherPrices, results, commodityLabel);
+                RegressionClass::plotResiduals(goldPrices, otherPrices, results, commodityLabel);
                 std::cout << GREEN << "\nResidual plot saved as 'residuals_" << commodityLabel << ".png'" << RESET << "\n";
             }
         }
@@ -85,9 +85,9 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
 }
 
 void RegressionControl::runSilverGoldRegression() const {
-    runCommodityRegression(StockPricesRecordClass::SILVER, "Silver");
+    runCommodityRegression(RecordClass::SILVER, "Silver");
 }
 
 void RegressionControl::runCopperGoldRegression() const {
-    runCommodityRegression(StockPricesRecordClass::COPPER, "Copper");
+    runCommodityRegression(RecordClass::COPPER, "Copper");
 }

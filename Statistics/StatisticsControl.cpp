@@ -103,20 +103,20 @@ void StatisticsControl::showCommodityAnalysis(const std::string& commodityName) 
 
     const auto& stat = statsRef.getStatistics(commodityName);
     auto getCommodityName = [](const std::string& code) -> std::string {
-        if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
-        if (code == StockPricesRecordClass::GOLD) return "Gold";
-        if (code == StockPricesRecordClass::SILVER) return "Silver";
-        if (code == StockPricesRecordClass::NATURAL_GAS) return "Natural Gas";
-        if (code == StockPricesRecordClass::CORN) return "Corn";
-        if (code == StockPricesRecordClass::WHEAT) return "Wheat";
-        if (code == StockPricesRecordClass::SOYBEAN) return "Soybean";
-        if (code == StockPricesRecordClass::COPPER) return "Copper";
-        if (code == StockPricesRecordClass::PLATINUM) return "Platinum";
-        if (code == StockPricesRecordClass::PALLADIUM) return "Palladium";
+        if (code == RecordClass::WTI_OIL) return "Crude Oil";
+        if (code == RecordClass::GOLD) return "Gold";
+        if (code == RecordClass::SILVER) return "Silver";
+        if (code == RecordClass::NATURAL_GAS) return "Natural Gas";
+        if (code == RecordClass::CORN) return "Corn";
+        if (code == RecordClass::WHEAT) return "Wheat";
+        if (code == RecordClass::SOYBEAN) return "Soybean";
+        if (code == RecordClass::COPPER) return "Copper";
+        if (code == RecordClass::PLATINUM) return "Platinum";
+        if (code == RecordClass::PALLADIUM) return "Palladium";
         return "N/A";
     };
     const std::string commodity = getCommodityName(commodityName);
-    printSectionHeader(commodity + "Analysis");
+    printSectionHeader(commodity + " Analysis");
     
     printStatisticRow("Data Points", stat.count);
     printStatisticRow("Mean", stat.mean);
@@ -143,16 +143,16 @@ void StatisticsControl::showComparativeAnalysis() const {
     printSectionHeader("MARKET VOLATILITY AND SKEW ANALYSIS");
     
     auto getCommodityName = [](const std::string& code) {
-        if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
-        if (code == StockPricesRecordClass::GOLD) return "Gold";
-        if (code == StockPricesRecordClass::SILVER) return "Silver";
-        if (code == StockPricesRecordClass::NATURAL_GAS) return "Natural Gas";
-        if (code == StockPricesRecordClass::CORN) return "Corn";
-        if (code == StockPricesRecordClass::WHEAT) return "Wheat";
-        if (code == StockPricesRecordClass::SOYBEAN) return "Soybean";
-        if (code == StockPricesRecordClass::COPPER) return "Copper";
-        if (code == StockPricesRecordClass::PLATINUM) return "Platinum";
-        if (code == StockPricesRecordClass::PALLADIUM) return "Palladium";
+        if (code == RecordClass::WTI_OIL) return "Crude Oil";
+        if (code == RecordClass::GOLD) return "Gold";
+        if (code == RecordClass::SILVER) return "Silver";
+        if (code == RecordClass::NATURAL_GAS) return "Natural Gas";
+        if (code == RecordClass::CORN) return "Corn";
+        if (code == RecordClass::WHEAT) return "Wheat";
+        if (code == RecordClass::SOYBEAN) return "Soybean";
+        if (code == RecordClass::COPPER) return "Copper";
+        if (code == RecordClass::PLATINUM) return "Platinum";
+        if (code == RecordClass::PALLADIUM) return "Palladium";
         return "N/A";
     };
 
@@ -205,16 +205,16 @@ void StatisticsControl::showGoldCorrelations() const {
     
     for (const auto& [commodity, coeff] : correlations) {
         std::string commodityName;
-        if (commodity == StockPricesRecordClass::WTI_OIL) commodityName = "Crude Oil";
-        else if (commodity == StockPricesRecordClass::GOLD) commodityName = "Gold";
-        else if (commodity == StockPricesRecordClass::SILVER) commodityName = "Silver";
-        else if (commodity == StockPricesRecordClass::NATURAL_GAS) commodityName = "Natural Gas";
-        else if (commodity == StockPricesRecordClass::CORN) commodityName = "Corn";
-        else if (commodity == StockPricesRecordClass::WHEAT) commodityName = "Wheat";
-        else if (commodity == StockPricesRecordClass::SOYBEAN) commodityName = "Soybean";
-        else if (commodity == StockPricesRecordClass::COPPER) commodityName = "Copper";
-        else if (commodity == StockPricesRecordClass::PLATINUM) commodityName = "Platinum";
-        else if (commodity == StockPricesRecordClass::PALLADIUM) commodityName = "Palladium";
+        if (commodity == RecordClass::WTI_OIL) commodityName = "Crude Oil";
+        else if (commodity == RecordClass::GOLD) commodityName = "Gold";
+        else if (commodity == RecordClass::SILVER) commodityName = "Silver";
+        else if (commodity == RecordClass::NATURAL_GAS) commodityName = "Natural Gas";
+        else if (commodity == RecordClass::CORN) commodityName = "Corn";
+        else if (commodity == RecordClass::WHEAT) commodityName = "Wheat";
+        else if (commodity == RecordClass::SOYBEAN) commodityName = "Soybean";
+        else if (commodity == RecordClass::COPPER) commodityName = "Copper";
+        else if (commodity == RecordClass::PLATINUM) commodityName = "Platinum";
+        else if (commodity == RecordClass::PALLADIUM) commodityName = "Palladium";
         else commodityName = commodity;
         
         std::string interpretation;
@@ -256,13 +256,13 @@ void StatisticsControl::showGoldCorrelations() const {
 std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() const {
     std::vector<PlotData> plots;
     
-    auto goldStats = statsRef.getStatistics(StockPricesRecordClass::GOLD);
+    auto goldStats = statsRef.getStatistics(RecordClass::GOLD);
     if (goldStats.count == 0) return plots;
     
     auto commodities = statsRef.getAvailableCommodities();
     
     for (const auto& commodity : commodities) {
-        if (commodity == StockPricesRecordClass::GOLD) continue;
+        if (commodity == RecordClass::GOLD) continue;
         
         PlotData plot;
         plot.commodity = commodity;
@@ -270,7 +270,7 @@ std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() co
         
         if (commodityStats.count != goldStats.count) continue;
         
-        auto goldPricesMap = statsRef.getDataRef().getAllPrices(StockPricesRecordClass::GOLD);
+        auto goldPricesMap = statsRef.getDataRef().getAllPrices(RecordClass::GOLD);
         auto otherPricesMap = statsRef.getDataRef().getAllPrices(commodity);
         
         for (const auto& [date, goldPrice] : goldPricesMap) {
@@ -321,16 +321,16 @@ void StatisticsControl::exportPlotData(const std::vector<PlotData>& allData) con
 }
 
 std::string StatisticsControl::getCommodityName(const std::string& code) const {
-    if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
-    if (code == StockPricesRecordClass::GOLD) return "Gold";
-    if (code == StockPricesRecordClass::SILVER) return "Silver";
-    if (code == StockPricesRecordClass::NATURAL_GAS) return "Natural Gas";
-    if (code == StockPricesRecordClass::CORN) return "Corn";
-    if (code == StockPricesRecordClass::WHEAT) return "Wheat";
-    if (code == StockPricesRecordClass::SOYBEAN) return "Soybean";
-    if (code == StockPricesRecordClass::COPPER) return "Copper";
-    if (code == StockPricesRecordClass::PLATINUM) return "Platinum";
-    if (code == StockPricesRecordClass::PALLADIUM) return "Palladium";
+    if (code == RecordClass::WTI_OIL) return "Crude Oil";
+    if (code == RecordClass::GOLD) return "Gold";
+    if (code == RecordClass::SILVER) return "Silver";
+    if (code == RecordClass::NATURAL_GAS) return "Natural Gas";
+    if (code == RecordClass::CORN) return "Corn";
+    if (code == RecordClass::WHEAT) return "Wheat";
+    if (code == RecordClass::SOYBEAN) return "Soybean";
+    if (code == RecordClass::COPPER) return "Copper";
+    if (code == RecordClass::PLATINUM) return "Platinum";
+    if (code == RecordClass::PALLADIUM) return "Palladium";
     return code;
 }
 

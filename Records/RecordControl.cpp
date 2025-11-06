@@ -13,25 +13,25 @@ namespace {
     const std::string BOLD = "\033[1m";
 }
 
-StockPricesRecordController::StockPricesRecordController(const StockPricesRecordClass& data)
+RecordControl::RecordControl(const RecordClass& data)
     : dataRef(data) {}
 
-void StockPricesRecordController::printHeader(const std::string& title) const {
+void RecordControl::printHeader(const std::string& title) const {
     std::cout << "\n" << BOLD << BLUE << "=== " << title << " ===" << RESET << "\n";
 }
 
-void StockPricesRecordController::printCommodityPrice(const std::string& commodityName, float price) const {
+void RecordControl::printCommodityPrice(const std::string& commodityName, float price) const {
     std::cout << std::left << std::setw(18) << commodityName 
               << ": " << GREEN << formatPrice(price) << RESET << "\n";
 }
 
-std::string StockPricesRecordController::formatPrice(float price) const {
+std::string RecordControl::formatPrice(float price) const {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(4) << price;
     return oss.str();
 }
 
-bool StockPricesRecordController::validateDate(const std::string& date) const {
+bool RecordControl::validateDate(const std::string& date) const {
     auto dates = dataRef.getAllDates();
     return std::any_of(dates.begin(), dates.end(), 
         [this, &date](time_t d) { 
@@ -39,7 +39,7 @@ bool StockPricesRecordController::validateDate(const std::string& date) const {
         });
 }
 
-void StockPricesRecordController::displayAllData(bool showProgress) const {
+void RecordControl::displayAllData(bool showProgress) const {
     auto dates = dataRef.getAllDates();
     if (dates.empty()) {
         std::cout << RED << "No data available!" << RESET << "\n";
@@ -58,7 +58,7 @@ void StockPricesRecordController::displayAllData(bool showProgress) const {
     }
 }
 
-void StockPricesRecordController::displayDataForDate(const std::string& date) const {
+void RecordControl::displayDataForDate(const std::string& date) const {
     if (!validateDate(date)) {
         std::cout << RED << "Invalid date: " << date << RESET << "\n";
         return;
@@ -67,19 +67,19 @@ void StockPricesRecordController::displayDataForDate(const std::string& date) co
     std::cout << "\n" << BOLD << "Date: " << date << RESET << "\n";
     std::cout << std::string(date.length() + 6, '-') << "\n";
     
-    printCommodityPrice("WTI Oil", dataRef.getPrice(StockPricesRecordClass::WTI_OIL, date));
-    printCommodityPrice("Gold", dataRef.getPrice(StockPricesRecordClass::GOLD, date));
-    printCommodityPrice("Silver", dataRef.getPrice(StockPricesRecordClass::SILVER, date));
-    printCommodityPrice("Natural Gas", dataRef.getPrice(StockPricesRecordClass::NATURAL_GAS, date));
-    printCommodityPrice("Corn", dataRef.getPrice(StockPricesRecordClass::CORN, date));
-    printCommodityPrice("Wheat", dataRef.getPrice(StockPricesRecordClass::WHEAT, date));
-    printCommodityPrice("Soybean", dataRef.getPrice(StockPricesRecordClass::SOYBEAN, date));
-    printCommodityPrice("Copper", dataRef.getPrice(StockPricesRecordClass::COPPER, date));
-    printCommodityPrice("Platinum", dataRef.getPrice(StockPricesRecordClass::PLATINUM, date));
-    printCommodityPrice("Palladium", dataRef.getPrice(StockPricesRecordClass::PALLADIUM, date));
+    printCommodityPrice("WTI Oil", dataRef.getPrice(RecordClass::WTI_OIL, date));
+    printCommodityPrice("Gold", dataRef.getPrice(RecordClass::GOLD, date));
+    printCommodityPrice("Silver", dataRef.getPrice(RecordClass::SILVER, date));
+    printCommodityPrice("Natural Gas", dataRef.getPrice(RecordClass::NATURAL_GAS, date));
+    printCommodityPrice("Corn", dataRef.getPrice(RecordClass::CORN, date));
+    printCommodityPrice("Wheat", dataRef.getPrice(RecordClass::WHEAT, date));
+    printCommodityPrice("Soybean", dataRef.getPrice(RecordClass::SOYBEAN, date));
+    printCommodityPrice("Copper", dataRef.getPrice(RecordClass::COPPER, date));
+    printCommodityPrice("Platinum", dataRef.getPrice(RecordClass::PLATINUM, date));
+    printCommodityPrice("Palladium", dataRef.getPrice(RecordClass::PALLADIUM, date));
 }
 
-void StockPricesRecordController::displayDataSummary() const {
+void RecordControl::displayDataSummary() const {
     auto dates = dataRef.getAllDates();
     if (dates.empty()) {
         std::cout << RED << "No data loaded!" << RESET << "\n";
@@ -96,16 +96,16 @@ void StockPricesRecordController::displayDataSummary() const {
     std::cout << "Commodities: " << BOLD << commodities.size() << RESET << "\n";
     
     auto getCommodityName = [](const std::string& code) {
-        if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
-        if (code == StockPricesRecordClass::GOLD) return "Gold";
-        if (code == StockPricesRecordClass::SILVER) return "Silver";
-        if (code == StockPricesRecordClass::NATURAL_GAS) return "Natural Gas";
-        if (code == StockPricesRecordClass::CORN) return "Corn";
-        if (code == StockPricesRecordClass::WHEAT) return "Wheat";
-        if (code == StockPricesRecordClass::SOYBEAN) return "Soybean";
-        if (code == StockPricesRecordClass::COPPER) return "Copper";
-        if (code == StockPricesRecordClass::PLATINUM) return "Platinum";
-        if (code == StockPricesRecordClass::PALLADIUM) return "Palladium";
+        if (code == RecordClass::WTI_OIL) return "Crude Oil";
+        if (code == RecordClass::GOLD) return "Gold";
+        if (code == RecordClass::SILVER) return "Silver";
+        if (code == RecordClass::NATURAL_GAS) return "Natural Gas";
+        if (code == RecordClass::CORN) return "Corn";
+        if (code == RecordClass::WHEAT) return "Wheat";
+        if (code == RecordClass::SOYBEAN) return "Soybean";
+        if (code == RecordClass::COPPER) return "Copper";
+        if (code == RecordClass::PLATINUM) return "Platinum";
+        if (code == RecordClass::PALLADIUM) return "Palladium";
         return "N/A";
     };
     
@@ -121,7 +121,7 @@ void StockPricesRecordController::displayDataSummary() const {
     }
 }
 
-void StockPricesRecordController::displayCommodityHistory(const std::string& commodityName) const {
+void RecordControl::displayCommodityHistory(const std::string& commodityName) const {
     auto prices = dataRef.getAllPrices(commodityName);
     if (prices.empty()) {
         std::cout << RED << "No data available for " << commodityName << RESET << "\n";
@@ -139,7 +139,7 @@ void StockPricesRecordController::displayCommodityHistory(const std::string& com
     }
 }
 
-void StockPricesRecordController::displayDateRange(const std::string& startDate, const std::string& endDate) const {
+void RecordControl::displayDateRange(const std::string& startDate, const std::string& endDate) const {
     if (!validateDate(startDate) || !validateDate(endDate)) {
         std::cout << RED << "Invalid date range provided" << RESET << "\n";
         return;
@@ -166,7 +166,7 @@ void StockPricesRecordController::displayDateRange(const std::string& startDate,
     }
 }
 
-std::vector<std::string> StockPricesRecordController::getAvailableDatesFormatted() const {
+std::vector<std::string> RecordControl::getAvailableDatesFormatted() const {
     auto dates = dataRef.getAllDates();
     std::vector<std::string> formattedDates;
     formattedDates.reserve(dates.size());

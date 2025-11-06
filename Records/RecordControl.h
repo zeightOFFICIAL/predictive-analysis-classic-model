@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-class StockPricesRecordController {
+class RecordControl {
 public:
-    explicit StockPricesRecordController(const StockPricesRecordClass& data);
+    explicit RecordControl(const RecordClass& data);
     
     void displayAllData(bool showProgress = true) const;
     void displayDataForDate(const std::string& date) const;
@@ -19,7 +19,7 @@ public:
     bool validateDate(const std::string& date) const;
 
 private:
-    const StockPricesRecordClass& dataRef;
+    const RecordClass& dataRef;
 
     void printHeader(const std::string& title) const;
     void printCommodityPrice(const std::string& commodityName, float price) const;

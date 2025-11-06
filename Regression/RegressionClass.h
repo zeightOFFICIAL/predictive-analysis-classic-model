@@ -13,7 +13,7 @@ struct RegressionMetrics {
     std::vector<double> residuals;    
 };
 
-class RegressionAnalysis {
+class RegressionClass {
 public:
     static RegressionMetrics calculateRegression(const std::vector<double>& X, const std::vector<double>& Y);
     static void plotResiduals(const std::vector<double>& goldPrices,
