@@ -39,6 +39,7 @@ public:
     static double calculateVariance(const std::vector<double>& values, double mean);
     static double calculateSkewness(const std::vector<double>& values, double mean, double stdDev);
     static double calculateKurtosis(const std::vector<double>& values, double mean, double stdDev);
+    std::vector<double> calculateQuartiles(std::vector<double> values) const;
 
     std::map<std::string, double> calculateGoldCorrelations() const;
     static double calculatePearsonCorrelation(const std::vector<double>& x, const std::vector<double>& y);
@@ -47,7 +48,6 @@ private:
     std::map<std::string, Statistics> statisticsMap;
     
     std::vector<double> calculateModes(const std::vector<double>& values) const;
-    std::vector<double> calculateQuartiles(std::vector<double> values) const;
     double calculatePercentile(const std::vector<double>& sortedValues, double percentile) const;
 };
 

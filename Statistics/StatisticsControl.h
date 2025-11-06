@@ -18,6 +18,8 @@ public:
     bool commodityExists(const std::string& commodityName) const;
     void showGoldCorrelations() const;
     void generateScatterPlotsWithGNUplot() const;
+    void generateHistograms() const;
+    void generateBoxplots() const;
     std::vector<double> getCommodityPrices(const std::string& commodity) const;
 
 private:

@@ -34,8 +34,11 @@ static void displayMenu() {
     std::cout << "7. Run Silver-Gold regression\n";
     std::cout << "8. Run Copper-Gold regression\n";
     std::cout << "9. Run custom commodity regression\n";
+    std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
+    std::cout << "10. Generate histograms for all commodities\n";
+    std::cout << "11. Generate boxplots for all commodities\n";
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-9): ";
+    std::cout << "Enter your choice (0-11): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -167,6 +170,16 @@ int main(int argc, char* argv[]) {
 
             case 9:
                 runCustomRegression(statsController, regController);
+                break;
+
+            case 10:
+                std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
+                statsController.generateHistograms();
+                break;
+
+            case 11:
+                std::cout << CYAN_COLOR << "\nGenerating boxplots..." << RESET << "\n";
+                statsController.generateBoxplots();
                 break;
 
             case 0:

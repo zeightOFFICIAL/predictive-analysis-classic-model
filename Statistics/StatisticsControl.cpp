@@ -366,6 +366,184 @@ void StatisticsControl::createGNUplotScript(const PlotData& data) const {
     script << "plot 'plot_" << data.commodity << ".dat' with points pt 7 ps 0.5 title ''\n";
 }
 
+void StatisticsControl::generateHistograms() const {
+    auto commodities = statsRef.getAvailableCommodities();
+    if (commodities.empty()) {
+        std::cout << YELLOW << "No data available for histograms!\n" << RESET;
+        return;
+    }
+
+    std::filesystem::create_directories("plots/histograms");
+
+    for (const auto& commodity : commodities) {
+        auto prices = getCommodityPrices(commodity);
+        if (prices.empty()) {
+            std::cout << YELLOW << "No price data for " << commodity << RESET << "\n";
+            continue;
+        }
+
+        prices.erase(std::remove_if(prices.begin(), prices.end(), 
+            [](double price) { return price <= 0 || std::isnan(price); }), prices.end());
+        
+        if (prices.empty()) {
+            std::cout << YELLOW << "No valid price data for " << commodity << RESET << "\n";
+            continue;
+        }
+
+        size_t binCount = static_cast<size_t>(1 + 3.322 * log10(prices.size()));
+        binCount = std::max(static_cast<size_t>(5), std::min(binCount, static_cast<size_t>(30))); // 5-30 bins
+        
+        auto [minIt, maxIt] = std::minmax_element(prices.begin(), prices.end());
+        double minPrice = *minIt;
+        double maxPrice = *maxIt;
+        
+        if (maxPrice - minPrice < 1e-10) {
+            minPrice -= 0.5;
+            maxPrice += 0.5;
+        }
+        
+        double range = maxPrice - minPrice;
+        double binWidth = range / binCount;
+
+        std::vector<int> bins(binCount, 0);
+        for (double price : prices) {
+            size_t binIndex = static_cast<size_t>((price - minPrice) / binWidth);
+            if (binIndex >= binCount) binIndex = binCount - 1;
+            bins[binIndex]++;
+        }
+
+        std::string sanitized = getSanitizedCommodityName(commodity);
+        std::string dataFile = "hist_" + sanitized + ".dat";
+        std::ofstream out(dataFile);
+        if (!out) {
+            std::cerr << RED << "Failed to create data file for " << commodity << RESET << "\n";
+            continue;
+        }
+
+        for (size_t i = 0; i < binCount; ++i) {
+            double binStart = minPrice + i * binWidth;
+            double binCenter = binStart + binWidth / 2.0;
+            out << binCenter << " " << bins[i] << "\n";
+        }
+        out.close();
+
+        std::string scriptFile = "hist_script_" + sanitized + ".gp";
+        std::ofstream script(scriptFile);
+        if (!script) {
+            std::cerr << RED << "Failed to create Gnuplot script for " << commodity << RESET << "\n";
+            std::remove(dataFile.c_str());
+            continue;
+        }
+
+        script << "set terminal pngcairo enhanced font 'Arial,12' size 800,600\n"
+               << "set output 'plots/histograms/" << sanitized << ".png'\n"
+               << "set title 'Price Distribution: " << getCommodityName(commodity) << "'\n"
+               << "set xlabel 'Price (USD)'\n"
+               << "set ylabel 'Frequency'\n"
+               << "set grid xtics ytics\n"
+               << "set style fill solid 0.7 border rgb 'black'\n"
+               << "set boxwidth " << binWidth * 0.8 << "\n"
+               << "plot '" << dataFile << "' using 1:2 with boxes lc rgb 'steelblue' title 'Frequency Distribution'\n";
+
+        script.close();
+
+        std::string command = "gnuplot " + scriptFile;
+        int status = system(command.c_str());
+        if (status != 0) {
+            std::cerr << RED << "Gnuplot failed for " << commodity << RESET << "\n";
+        } else {
+            std::cout << GREEN << "Generated histogram for " << getCommodityName(commodity) 
+                      << " at plots/histograms/" << sanitized << ".png" << RESET << "\n";
+        }
+
+        std::remove(dataFile.c_str());
+        std::remove(scriptFile.c_str());
+    }
+}
+
+void StatisticsControl::generateBoxplots() const {
+    auto commodities = statsRef.getAvailableCommodities();
+    if (commodities.empty()) {
+        std::cout << YELLOW << "No data available for boxplots!\n" << RESET;
+        return;
+    }
+
+    std::filesystem::create_directories("plots/boxplots");
+
+    for (const auto& commodity : commodities) {
+        std::vector<double> prices = getCommodityPrices(commodity);
+        if (prices.empty()) continue;
+
+        std::string niceName   = getCommodityName(commodity);
+        std::string sanitized  = getSanitizedCommodityName(commodity);
+
+        std::sort(prices.begin(), prices.end());
+
+        auto q = statsRef.calculateQuartiles(prices);
+        double q1 = q[0], median = q[1], q3 = q[2];
+        double iqr = q3 - q1;
+        double lower = q1 - 1.5 * iqr;
+        double upper = q3 + 1.5 * iqr;
+
+        double whiskerLow  = *std::lower_bound(prices.begin(), prices.end(), lower);
+        double whiskerHigh = *(--std::upper_bound(prices.begin(), prices.end(), upper));
+
+        std::vector<double> outliers;
+        for (double p : prices)
+            if (p < lower || p > upper)
+                outliers.push_back(p);
+
+        std::string boxFile = "box_" + sanitized + ".dat";
+        {
+            std::ofstream f(boxFile);
+            f << "0 " << whiskerLow << " " << q1 << " " << median << " " << q3 << " " << whiskerHigh << "\n";
+        }
+
+        std::string outFile = "out_" + sanitized + ".dat";
+        {
+            std::ofstream f(outFile);
+            for (double v : outliers) f << v << "\n";
+        }
+
+        std::string scriptFile = "script_" + sanitized + ".gp";
+        std::ofstream script(scriptFile);
+
+        script << "set terminal pngcairo enhanced font 'Arial,14' size 800,600\n"
+               << "set output 'plots/boxplots/" << sanitized << ".png'\n"
+               << "set title 'Boxplot — " << niceName << " Prices'\n"
+               << "set ylabel 'Price (USD)'\n"
+               << "set grid ytics\n"
+               << "unset xtics\n"
+               << "set xrange [-0.6:0.6]\n"
+               << "set style fill solid 0.45 border lt -1\n"
+               << "set boxwidth 0.5\n"
+               << "set key top left\n\n"
+
+               << "plot '" << boxFile << "' using 1:3:2:6:5 with candlesticks lc rgb '#834ea7ff' lw 2 notitle, \\\n"
+               << "     '' using 1:4:4:4:4 with candlesticks lt 1 lw 4 notitle";
+        
+        if (!outliers.empty()) {
+            script << ", \\\n     '" << outFile << "' using (0.0 + 0.35*(rand(0)-0.5)):1 "
+                   << "with points pt 7 ps 1.1 lc rgb '#e31a1c' title 'Outliers'";
+        }
+        script << "\n";
+
+        script.close();
+
+        int ret = system(("gnuplot " + scriptFile).c_str());
+        if (ret == 0) {
+            std::cout << GREEN << "Generated boxplot for " << getCommodityName(commodity) 
+                      << " at plots/boxplots/" << sanitized << ".png" << RESET << "\n";
+        } else {
+            std::cerr << RED << "Gnuplot failed for " << niceName << RESET << "\n";
+        }
+
+        std::remove(boxFile.c_str());
+        std::remove(outFile.c_str());
+        std::remove(scriptFile.c_str());
+    }
+}
+
 std::vector<double> StatisticsControl::getCommodityPrices(const std::string& commodity) const {
     auto pricesMap = statsRef.getDataRef().getAllPrices(commodity);
     std::vector<double> prices;
