@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-class StatisticsController {
+class StatisticsControl {
 public:
-    explicit StatisticsController(const StatisticsClass& stats);
+    explicit StatisticsControl(const StatisticsClass& stats);
     
     void showFullReport() const;
     void showSummaryTable() const;

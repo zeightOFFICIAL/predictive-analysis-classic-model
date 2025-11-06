@@ -5,16 +5,16 @@
 #include "RegressionClass.h"
 #include <string>
 
-class RegressionController {
+class RegressionControl {
 public:
-    explicit RegressionController(const StatisticsController& statsController);
+    explicit RegressionControl(const StatisticsControl& statsController);
     
     void runSilverGoldRegression() const;
     void runCopperGoldRegression() const;
     void runCommodityRegression(const std::string& commodityName, const std::string& commodityLabel) const;
 
 private:
-    const StatisticsController& statsController;
+    const StatisticsControl& statsController;
 
     void displayResults(const RegressionMetrics& results, 
                        const std::string& commodityLabel) const;

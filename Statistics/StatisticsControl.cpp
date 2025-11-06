@@ -16,32 +16,32 @@ namespace {
     const std::string BOLD = "\033[1m";
 }
 
-StatisticsController::StatisticsController(const StatisticsClass& stats)
+StatisticsControl::StatisticsControl(const StatisticsClass& stats)
     : statsRef(stats) {}
 
-void StatisticsController::printSectionHeader(const std::string& title) const {
+void StatisticsControl::printSectionHeader(const std::string& title) const {
     std::cout << "\n" << BOLD << BLUE << "=== " << title << " ===" << RESET << "\n";
 }
 
-void StatisticsController::printStatisticRow(const std::string& label, double value, const std::string& unit) const {
+void StatisticsControl::printStatisticRow(const std::string& label, double value, const std::string& unit) const {
     std::cout << std::left << std::setw(20) << label 
               << ": " << GREEN << std::fixed << std::setprecision(6)
               << value << RESET << " " << unit << "\n";
 }
 
-std::string StatisticsController::interpretSkewness(double value) const {
+std::string StatisticsControl::interpretSkewness(double value) const {
     if (value > 0.5) return RED + "Right-skewed" + RESET;
     if (value < -0.5) return RED + "Left-skewed" + RESET;
     return GREEN + "Symmetric" + RESET;
 }
 
-std::string StatisticsController::interpretKurtosis(double value) const {
+std::string StatisticsControl::interpretKurtosis(double value) const {
     if (value > 1.0) return RED + "Heavy-tailed" + RESET;
     if (value < -1.0) return YELLOW + "Light-tailed" + RESET;
     return GREEN + "Normal" + RESET;
 }
 
-std::string StatisticsController::formatModeOutput(const std::vector<double>& modes, bool hasSingleMode) const {
+std::string StatisticsControl::formatModeOutput(const std::vector<double>& modes, bool hasSingleMode) const {
     if (modes.empty()) return YELLOW + "No mode (all unique)" + RESET;
     if (hasSingleMode) return MAGENTA + std::to_string(modes[0]) + RESET;
     
@@ -53,7 +53,7 @@ std::string StatisticsController::formatModeOutput(const std::vector<double>& mo
     return result + RESET;
 }
 
-void StatisticsController::showFullReport() const {
+void StatisticsControl::showFullReport() const {
     auto commodities = statsRef.getAvailableCommodities();
     if (commodities.empty()) {
         std::cout << RED << "No statistics available!\n" << RESET;
@@ -66,7 +66,7 @@ void StatisticsController::showFullReport() const {
     }
 }
 
-void StatisticsController::showSummaryTable() const {
+void StatisticsControl::showSummaryTable() const {
     auto commodities = statsRef.getAvailableCommodities();
     if (commodities.empty()) {
         std::cout << RED << "No data available!\n" << RESET;
@@ -95,7 +95,7 @@ void StatisticsController::showSummaryTable() const {
     }
 }
 
-void StatisticsController::showCommodityAnalysis(const std::string& commodityName) const {
+void StatisticsControl::showCommodityAnalysis(const std::string& commodityName) const {
     if (!commodityExists(commodityName)) {
         std::cout << RED << "Commodity not found: " << commodityName << RESET << "\n";
         return;
@@ -133,7 +133,7 @@ void StatisticsController::showCommodityAnalysis(const std::string& commodityNam
               << "Kurtosis=" << stat.kurtosis << " (" << interpretKurtosis(stat.kurtosis) << ")\n";
 }
 
-void StatisticsController::showComparativeAnalysis() const {
+void StatisticsControl::showComparativeAnalysis() const {
     auto commodities = statsRef.getAvailableCommodities();
     if (commodities.size() < 2) {
         std::cout << YELLOW << "Need at least 2 commodities for comparison\n" << RESET;
@@ -182,16 +182,16 @@ void StatisticsController::showComparativeAnalysis() const {
               << statsRef.getStatistics(mostRightSkewed).skewness << ")\n";
 }
 
-std::vector<std::string> StatisticsController::getAvailableCommodities() const {
+std::vector<std::string> StatisticsControl::getAvailableCommodities() const {
     return statsRef.getAvailableCommodities();
 }
 
-bool StatisticsController::commodityExists(const std::string& commodityName) const {
+bool StatisticsControl::commodityExists(const std::string& commodityName) const {
     auto commodities = statsRef.getAvailableCommodities();
     return std::find(commodities.begin(), commodities.end(), commodityName) != commodities.end();
 }
 
-void StatisticsController::showGoldCorrelations() const {
+void StatisticsControl::showGoldCorrelations() const {
     auto correlations = statsRef.calculateGoldCorrelations();
     
     printSectionHeader("GOLD PRICE CORRELATION ANALYSIS");
@@ -253,7 +253,7 @@ void StatisticsController::showGoldCorrelations() const {
     }
 }
 
-std::vector<StatisticsController::PlotData> StatisticsController::preparePlotData() const {
+std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() const {
     std::vector<PlotData> plots;
     
     auto goldStats = statsRef.getStatistics(StockPricesRecordClass::GOLD);
@@ -298,7 +298,7 @@ std::vector<StatisticsController::PlotData> StatisticsController::preparePlotDat
     return plots;
 }
 
-void StatisticsController::generateScatterPlotsWithGNUplot() const {
+void StatisticsControl::generateScatterPlotsWithGNUplot() const {
     auto plotsData = preparePlotData();
     exportPlotData(plotsData);
     
@@ -311,7 +311,7 @@ void StatisticsController::generateScatterPlotsWithGNUplot() const {
     }
 }
 
-void StatisticsController::exportPlotData(const std::vector<PlotData>& allData) const {
+void StatisticsControl::exportPlotData(const std::vector<PlotData>& allData) const {
     for (const auto& plot : allData) {
         std::ofstream outFile("plot_" + plot.commodity + ".dat");
         for (const auto& [gold, other] : plot.points) {
@@ -320,7 +320,7 @@ void StatisticsController::exportPlotData(const std::vector<PlotData>& allData) 
     }
 }
 
-std::string StatisticsController::getCommodityName(const std::string& code) const {
+std::string StatisticsControl::getCommodityName(const std::string& code) const {
     if (code == StockPricesRecordClass::WTI_OIL) return "Crude Oil";
     if (code == StockPricesRecordClass::GOLD) return "Gold";
     if (code == StockPricesRecordClass::SILVER) return "Silver";
@@ -334,7 +334,7 @@ std::string StatisticsController::getCommodityName(const std::string& code) cons
     return code;
 }
 
-void StatisticsController::createGNUplotScript(const PlotData& data) const {
+void StatisticsControl::createGNUplotScript(const PlotData& data) const {
     
     std::ofstream script("plot_script.gp");
     
@@ -348,7 +348,7 @@ void StatisticsController::createGNUplotScript(const PlotData& data) const {
     script << "plot 'plot_" << data.commodity << ".dat' with points pt 7 ps 0.5 title ''\n";
 }
 
-std::vector<double> StatisticsController::getCommodityPrices(const std::string& commodity) const {
+std::vector<double> StatisticsControl::getCommodityPrices(const std::string& commodity) const {
     auto pricesMap = statsRef.getDataRef().getAllPrices(commodity);
     std::vector<double> prices;
     for (const auto& [_, price] : pricesMap) {

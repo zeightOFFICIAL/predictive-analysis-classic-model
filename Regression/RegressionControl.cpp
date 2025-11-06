@@ -13,10 +13,10 @@ namespace {
     const std::string RESET = "\033[0m";
 }
 
-RegressionController::RegressionController(const StatisticsController& statsController)
+RegressionControl::RegressionControl(const StatisticsControl& statsController)
     : statsController(statsController) {}
 
-void RegressionController::displayResults(const RegressionMetrics& results, 
+void RegressionControl::displayResults(const RegressionMetrics& results, 
                                        const std::string& commodityLabel) const {
     std::cout << "\n" << GREEN << "Regression Results:" << RESET << "\n";
     std::cout << commodityLabel << " Price = " << results.beta0 << " + " << results.beta1 << " x Gold Price\n";
@@ -42,7 +42,7 @@ void RegressionController::displayResults(const RegressionMetrics& results,
     std::cout << "- Average prediction error: " << avgResidual << " (closer to 0 is better)\n";
 }
 
-void RegressionController::runCommodityRegression(const std::string& commodityName, 
+void RegressionControl::runCommodityRegression(const std::string& commodityName, 
                                                 const std::string& commodityLabel) const {
     std::cout << CYAN << "\nRunning " << commodityLabel << "-Gold Regression Analysis..." << RESET << std::endl;
     
@@ -84,10 +84,10 @@ void RegressionController::runCommodityRegression(const std::string& commodityNa
     }
 }
 
-void RegressionController::runSilverGoldRegression() const {
+void RegressionControl::runSilverGoldRegression() const {
     runCommodityRegression(StockPricesRecordClass::SILVER, "Silver");
 }
 
-void RegressionController::runCopperGoldRegression() const {
+void RegressionControl::runCopperGoldRegression() const {
     runCommodityRegression(StockPricesRecordClass::COPPER, "Copper");
 }
