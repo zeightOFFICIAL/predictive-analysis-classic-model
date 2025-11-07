@@ -206,27 +206,26 @@ void StatisticsControl::showGoldCorrelations() const {
     auto correlations = statsRef.calculateGoldCorrelations();
     
     printSectionHeader("GOLD PRICE CORRELATION ANALYSIS");
-    std::cout << "Pearson correlation coefficients (r-values):\n\n";
-    
+    std::cout << "Pearson correlation coefficients (r-values):\n\n";    
     std::cout << BOLD << std::left 
               << std::setw(20) << "COMMODITY"
               << std::setw(12) << "r-VALUE"
               << "INTERPRETATION" << RESET << "\n";
     std::cout << std::string(50, '-') << "\n";
     
-    for (const auto& [commodity, coeff] : correlations) {
-        std::string commodityName;
-        if (commodity == RecordClass::WTI_OIL) commodityName = "Crude Oil";
-        else if (commodity == RecordClass::GOLD) commodityName = "Gold";
-        else if (commodity == RecordClass::SILVER) commodityName = "Silver";
-        else if (commodity == RecordClass::NATURAL_GAS) commodityName = "Natural Gas";
-        else if (commodity == RecordClass::CORN) commodityName = "Corn";
-        else if (commodity == RecordClass::WHEAT) commodityName = "Wheat";
-        else if (commodity == RecordClass::SOYBEAN) commodityName = "Soybean";
-        else if (commodity == RecordClass::COPPER) commodityName = "Copper";
-        else if (commodity == RecordClass::PLATINUM) commodityName = "Platinum";
-        else if (commodity == RecordClass::PALLADIUM) commodityName = "Palladium";
-        else commodityName = commodity;
+    for (const auto& [type, coeff] : correlations) {
+        std::string typeName;
+        if (type == RecordClass::WTI_OIL) typeName = "Crude Oil";
+        else if (type == RecordClass::GOLD) typeName = "Gold";
+        else if (type == RecordClass::SILVER) typeName = "Silver";
+        else if (type == RecordClass::NATURAL_GAS) typeName = "Natural Gas";
+        else if (type == RecordClass::CORN) typeName = "Corn";
+        else if (type == RecordClass::WHEAT) typeName = "Wheat";
+        else if (type == RecordClass::SOYBEAN) typeName = "Soybean";
+        else if (type == RecordClass::COPPER) typeName = "Copper";
+        else if (type == RecordClass::PLATINUM) typeName = "Platinum";
+        else if (type == RecordClass::PALLADIUM) typeName = "Palladium";
+        else typeName = type;
         
         std::string interpretation;
         std::string color;
@@ -234,19 +233,19 @@ void StatisticsControl::showGoldCorrelations() const {
         if (coeff >= 0.7) {
             interpretation = "Strong positive";
             color = GREEN;
-        } else if (coeff >= 0.3) {
+        } else if (coeff >= 0.4) {
             interpretation = "Moderate positive";
             color = CYAN;
-        } else if (coeff >= 0.1) {
+        } else if (coeff >= 0.2) {
             interpretation = "Weak positive";
             color = YELLOW;
         } else if (coeff <= -0.7) {
             interpretation = "Strong negative";
             color = RED;
-        } else if (coeff <= -0.3) {
+        } else if (coeff <= -0.4) {
             interpretation = "Moderate negative";
             color = MAGENTA;
-        } else if (coeff <= -0.1) {
+        } else if (coeff <= -0.2) {
             interpretation = "Weak negative";
             color = YELLOW;
         } else {
@@ -257,8 +256,7 @@ void StatisticsControl::showGoldCorrelations() const {
         std::ostringstream valueStream;
         valueStream << std::fixed << std::setprecision(4) << coeff;
         std::string valueStr = valueStream.str();
-
-        std::cout << std::left << std::setw(20) << commodityName
+        std::cout << std::left << std::setw(20) << typeName
                   << std::left << std::setw(21) << color + valueStr + RESET
                   << color << interpretation << RESET << "\n";
     }
@@ -270,19 +268,19 @@ std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() co
     auto goldStats = statsRef.getStatistics(RecordClass::GOLD);
     if (goldStats.count == 0) return plots;
     
-    auto commodities = statsRef.getAvailableTypes();
+    auto types = statsRef.getAvailableTypes();
     
-    for (const auto& commodity : commodities) {
-        if (commodity == RecordClass::GOLD) continue;
+    for (const auto& type : types) {
+        if (type == RecordClass::GOLD) continue;
         
         PlotData plot;
-        plot.commodity = commodity;
-        auto commodityStats = statsRef.getStatistics(commodity);
+        plot.type = type;
+        auto typeStats = statsRef.getStatistics(type);
         
-        if (commodityStats.count != goldStats.count) continue;
+        if (typeStats.count != goldStats.count) continue;
         
         auto goldPricesMap = statsRef.getDataRef().getAllPrices(RecordClass::GOLD);
-        auto otherPricesMap = statsRef.getDataRef().getAllPrices(commodity);
+        auto otherPricesMap = statsRef.getDataRef().getAllPrices(type);
         
         for (const auto& [date, goldPrice] : goldPricesMap) {
             auto it = otherPricesMap.find(date);
@@ -323,11 +321,11 @@ void StatisticsControl::generateScatterPlotsWithGNUplot() const {
     for (const auto& plot : plotsData) {
         createGNUplotScript(plot);
         system("gnuplot plot_script.gp");
-        std::cout << "\nGenerated plot for Gold vs " << getCommodityName(plot.commodity) 
+        std::cout << "\nGenerated plot for Gold vs " << getTypeName(plot.type) 
                   << " (correlation: " << std::fixed << std::setprecision(4)
                   << plot.correlation << ")";
 
-        std::filesystem::remove("plot_" + plot.commodity + ".dat");
+        std::filesystem::remove("plot_" + plot.type + ".dat");
     }
 
     std::filesystem::remove("plot_script.gp");
@@ -335,14 +333,14 @@ void StatisticsControl::generateScatterPlotsWithGNUplot() const {
 
 void StatisticsControl::exportPlotData(const std::vector<PlotData>& allData) const {
     for (const auto& plot : allData) {
-        std::ofstream outFile("plot_" + plot.commodity + ".dat");
+        std::ofstream outFile("plot_" + plot.type + ".dat");
         for (const auto& [gold, other] : plot.points) {
             outFile << gold << " " << other << "\n";
         }
     }
 }
 
-std::string StatisticsControl::getCommodityName(const std::string& code) const {
+std::string StatisticsControl::getTypeName(const std::string& code) const {
     if (code == RecordClass::WTI_OIL) return "Crude Oil";
     if (code == RecordClass::GOLD) return "Gold";
     if (code == RecordClass::SILVER) return "Silver";
@@ -356,39 +354,38 @@ std::string StatisticsControl::getCommodityName(const std::string& code) const {
     return code;
 }
 
-std::string StatisticsControl::getSanitizedCommodityName(const std::string& code) const {
-    std::string name = getCommodityName(code);
+std::string StatisticsControl::getSanitizedTypeName(const std::string& code) const {
+    std::string name = getTypeName(code);
     std::replace(name.begin(), name.end(), ' ', '_');
     return name;
 }
 
 void StatisticsControl::createGNUplotScript(const PlotData& data) const {
     
-    std::ofstream script("plot_script.gp");
-    
+    std::ofstream script("plot_script.gp");    
     script << "set terminal pngcairo enhanced font 'Arial,12'\n";
-    script << "set output 'plots/correlation/" << getSanitizedCommodityName(data.commodity) << ".png'\n";
-    script << "set title 'Gold vs " << getCommodityName(data.commodity) 
+    script << "set output 'plots/correlation/" << getSanitizedTypeName(data.type) << ".png'\n";
+    script << "set title 'Gold vs " << getTypeName(data.type) 
            << " (r = " << std::fixed << std::setprecision(3) << data.correlation << ")'\n";
     script << "set xlabel 'Gold Price (USD)'\n";
-    script << "set ylabel '" << getCommodityName(data.commodity) << " Price'\n";
+    script << "set ylabel '" << getTypeName(data.type) << " Price'\n";
     script << "set grid\n";
-    script << "plot 'plot_" << data.commodity << ".dat' with points pt 7 ps 0.5 title ''\n";
+    script << "plot 'plot_" << data.type << ".dat' with points pt 7 ps 0.5 title ''\n";
 }
 
 void StatisticsControl::generateHistograms() const {
-    auto commodities = statsRef.getAvailableTypes();
-    if (commodities.empty()) {
+    auto types = statsRef.getAvailableTypes();
+    if (types.empty()) {
         std::cout << YELLOW << "No data available for histograms!\n" << RESET;
         return;
     }
 
     std::filesystem::create_directories("plots/histograms");
 
-    for (const auto& commodity : commodities) {
-        auto prices = getCommodityPrices(commodity);
+    for (const auto& type : types) {
+        auto prices = getTypePrices(type);
         if (prices.empty()) {
-            std::cout << YELLOW << "No price data for " << commodity << RESET << "\n";
+            std::cout << YELLOW << "No price data for " << type << RESET << "\n";
             continue;
         }
 
@@ -396,7 +393,7 @@ void StatisticsControl::generateHistograms() const {
             [](double price) { return price <= 0 || std::isnan(price); }), prices.end());
         
         if (prices.empty()) {
-            std::cout << YELLOW << "No valid price data for " << commodity << RESET << "\n";
+            std::cout << YELLOW << "No valid price data for " << type << RESET << "\n";
             continue;
         }
 
@@ -422,11 +419,11 @@ void StatisticsControl::generateHistograms() const {
             bins[binIndex]++;
         }
 
-        std::string sanitized = getSanitizedCommodityName(commodity);
+        std::string sanitized = getSanitizedTypeName(type);
         std::string dataFile = "hist_" + sanitized + ".dat";
         std::ofstream out(dataFile);
         if (!out) {
-            std::cerr << RED << "Failed to create data file for " << commodity << RESET << "\n";
+            std::cerr << RED << "Failed to create data file for " << type << RESET << "\n";
             continue;
         }
 
@@ -440,14 +437,14 @@ void StatisticsControl::generateHistograms() const {
         std::string scriptFile = "hist_script_" + sanitized + ".gp";
         std::ofstream script(scriptFile);
         if (!script) {
-            std::cerr << RED << "Failed to create Gnuplot script for " << commodity << RESET << "\n";
+            std::cerr << RED << "Failed to create Gnuplot script for " << type << RESET << "\n";
             std::remove(dataFile.c_str());
             continue;
         }
 
         script << "set terminal pngcairo enhanced font 'Arial,12' size 800,600\n"
                << "set output 'plots/histograms/" << sanitized << ".png'\n"
-               << "set title 'Price Distribution: " << getCommodityName(commodity) << "'\n"
+               << "set title 'Price Distribution: " << getTypeName(type) << "'\n"
                << "set xlabel 'Price (USD)'\n"
                << "set ylabel 'Frequency'\n"
                << "set grid xtics ytics\n"
@@ -460,9 +457,9 @@ void StatisticsControl::generateHistograms() const {
         std::string command = "gnuplot " + scriptFile;
         int status = system(command.c_str());
         if (status != 0) {
-            std::cerr << RED << "Gnuplot failed for " << commodity << RESET << "\n";
+            std::cerr << RED << "Gnuplot failed for " << type << RESET << "\n";
         } else {
-            std::cout << GREEN << "Generated histogram for " << getCommodityName(commodity) 
+            std::cout << GREEN << "Generated histogram for " << getTypeName(type) 
                       << " at plots/histograms/" << sanitized << ".png" << RESET << "\n";
         }
 
@@ -472,20 +469,20 @@ void StatisticsControl::generateHistograms() const {
 }
 
 void StatisticsControl::generateBoxplots() const {
-    auto commodities = statsRef.getAvailableTypes();
-    if (commodities.empty()) {
+    auto types = statsRef.getAvailableTypes();
+    if (types.empty()) {
         std::cout << YELLOW << "No data available for boxplots!\n" << RESET;
         return;
     }
 
     std::filesystem::create_directories("plots/boxplots");
 
-    for (const auto& commodity : commodities) {
-        std::vector<double> prices = getCommodityPrices(commodity);
+    for (const auto& type : types) {
+        std::vector<double> prices = getTypePrices(type);
         if (prices.empty()) continue;
 
-        std::string niceName   = getCommodityName(commodity);
-        std::string sanitized  = getSanitizedCommodityName(commodity);
+        std::string niceName   = getTypeName(type);
+        std::string sanitized  = getSanitizedTypeName(type);
 
         std::sort(prices.begin(), prices.end());
 
@@ -542,7 +539,7 @@ void StatisticsControl::generateBoxplots() const {
 
         int ret = system(("gnuplot " + scriptFile).c_str());
         if (ret == 0) {
-            std::cout << GREEN << "Generated boxplot for " << getCommodityName(commodity) 
+            std::cout << GREEN << "Generated boxplot for " << getTypeName(type) 
                       << " at plots/boxplots/" << sanitized << ".png" << RESET << "\n";
         } else {
             std::cerr << RED << "Gnuplot failed for " << niceName << RESET << "\n";
@@ -555,8 +552,8 @@ void StatisticsControl::generateBoxplots() const {
 }
 
 void StatisticsControl::generateCorrelationMatrix() const {
-    auto commodities = statsRef.getAvailableTypes();
-    if (commodities.empty()) {
+    auto types = statsRef.getAvailableTypes();
+    if (types.empty()) {
         std::cout << YELLOW << "No data available for correlation matrix!\n" << RESET;
         return;
     }
@@ -564,13 +561,13 @@ void StatisticsControl::generateCorrelationMatrix() const {
     printSectionHeader("CORRELATION MATRIX - ALL COMMODITIES");
 
     std::vector<std::vector<double>> allPrices;
-    std::vector<std::string> commodityNames;
+    std::vector<std::string> typesNames;
     
-    for (const auto& commodity : commodities) {
-        auto prices = getCommodityPrices(commodity);
+    for (const auto& type : types) {
+        auto prices = getTypePrices(type);
         if (!prices.empty()) {
             allPrices.push_back(prices);
-            commodityNames.push_back(getCommodityName(commodity));
+            typesNames.push_back(getTypeName(type));
         }
     }
 
@@ -607,14 +604,14 @@ void StatisticsControl::generateCorrelationMatrix() const {
 
     std::cout << std::left << std::setw(nameWidth) << "";
     for (size_t i = 0; i < n; ++i) {
-        std::string shortName = commodityNames[i].substr(0, nameWidth - 1);
+        std::string shortName = typesNames[i].substr(0, nameWidth - 1);
         std::cout << std::setw(valueWidth) << shortName;
     }
     std::cout << "\n" << std::string(nameWidth + n * valueWidth, '-') << "\n";
 
     for (size_t i = 0; i < n; ++i) {
         std::cout << std::left << std::setw(nameWidth) 
-                  << commodityNames[i].substr(0, nameWidth - 1);
+                  << typesNames[i].substr(0, nameWidth - 1);
         
         for (size_t j = 0; j < n; ++j) {
             double corr = correlationMatrix[i][j];
@@ -636,12 +633,12 @@ void StatisticsControl::generateCorrelationMatrix() const {
         std::cout << "\n";
     }
 
-    generateCorrelationMatrixPlot(correlationMatrix, commodityNames);
+    generateCorrelationMatrixPlot(correlationMatrix, typesNames);
 }
 
 void StatisticsControl::generateCorrelationMatrixPlot(
     const std::vector<std::vector<double>>& correlationMatrix,
-    const std::vector<std::string>& commodityNames) const {
+    const std::vector<std::string>& typesNames) const {
     
     std::filesystem::create_directories("plots/correlation");
 
@@ -656,7 +653,7 @@ void StatisticsControl::generateCorrelationMatrixPlot(
     dataFile << "# Correlation Matrix Data\n";
     dataFile << "# ";
     for (size_t i = 0; i < n; ++i) {
-        dataFile << commodityNames[i];
+        dataFile << typesNames[i];
         if (i < n - 1) dataFile << " | ";
     }
     dataFile << "\n";
@@ -699,14 +696,14 @@ void StatisticsControl::generateCorrelationMatrixPlot(
     
     script << "set xtics (";
     for (size_t i = 0; i < n; ++i) {
-        script << "\"" << commodityNames[i] << "\" " << i;
+        script << "\"" << typesNames[i] << "\" " << i;
         if (i < n - 1) script << ", ";
     }
     script << ")\n";
     
     script << "set ytics (";
     for (size_t i = 0; i < n; ++i) {
-        script << "\"" << commodityNames[i] << "\" " << i;
+        script << "\"" << typesNames[i] << "\" " << i;
         if (i < n - 1) script << ", ";
     }
     script << ")\n";
@@ -728,8 +725,8 @@ void StatisticsControl::generateCorrelationMatrixPlot(
     std::filesystem::remove("correlation_heatmap.gp");
 }
 
-std::vector<double> StatisticsControl::getCommodityPrices(const std::string& commodity) const {
-    auto pricesMap = statsRef.getDataRef().getAllPrices(commodity);
+std::vector<double> StatisticsControl::getTypePrices(const std::string& type) const {
+    auto pricesMap = statsRef.getDataRef().getAllPrices(type);
     std::vector<double> prices;
     for (const auto& [_, price] : pricesMap) {
         prices.push_back(price);

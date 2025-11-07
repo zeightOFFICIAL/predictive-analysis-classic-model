@@ -65,8 +65,8 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
     std::cout << CYAN << "\nRunning " << commodityLabel << "-Gold Regression Analysis..." << RESET << std::endl;
     
     try {
-        auto goldPrices = statsController.getCommodityPrices(RecordClass::GOLD);
-        auto otherPrices = statsController.getCommodityPrices(commodityName);
+        auto goldPrices = statsController.getTypePrices(RecordClass::GOLD);
+        auto otherPrices = statsController.getTypePrices(commodityName);
         
         if (goldPrices.empty() || otherPrices.empty()) {
             std::cout << RED << "Error: Missing price data for Gold or " << commodityLabel << RESET << std::endl;
@@ -143,7 +143,7 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
     // Display selected commodities
     std::cout << "Selected commodities: ";
     for (size_t i = 0; i < selectedCommodities.size(); ++i) {
-        std::cout << statsController.getCommodityName(selectedCommodities[i]);
+        std::cout << statsController.getTypeName(selectedCommodities[i]);
         if (i < selectedCommodities.size() - 1) {
             std::cout << ", ";
         }
@@ -151,7 +151,7 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
     std::cout << "\n\n";
     
     try {
-        auto goldPrices = statsController.getCommodityPrices(RecordClass::GOLD);
+        auto goldPrices = statsController.getTypePrices(RecordClass::GOLD);
         if (goldPrices.empty()) {
             std::cout << RED << "Error: No gold price data available!\n" << RESET;
             return;
@@ -168,16 +168,16 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
                 continue;
             }
             
-            auto prices = statsController.getCommodityPrices(commodity);
+            auto prices = statsController.getTypePrices(commodity);
             if (prices.size() == goldPrices.size() && !prices.empty()) {
-                predictorNames.push_back(statsController.getCommodityName(commodity));
+                predictorNames.push_back(statsController.getTypeName(commodity));
                 predictors.push_back(prices);
                 std::cout << GREEN << "✓ " << std::setw(12) << std::left 
-                          << statsController.getCommodityName(commodity) 
+                          << statsController.getTypeName(commodity) 
                           << " (" << prices.size() << " points)\n" << RESET;
             } else {
                 std::cout << YELLOW << "✗ " << std::setw(12) << std::left 
-                          << statsController.getCommodityName(commodity)
+                          << statsController.getTypeName(commodity)
                           << " - size mismatch: " << prices.size() << " vs " << goldPrices.size() << RESET << "\n";
             }
         }
@@ -315,7 +315,7 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
     std::cout << CYAN << "\n=== MULTIPLE REGRESSION: Gold vs All Commodities ===" << RESET << std::endl;
     
     try {
-        auto goldPrices = statsController.getCommodityPrices(RecordClass::GOLD);
+        auto goldPrices = statsController.getTypePrices(RecordClass::GOLD);
         if (goldPrices.empty()) {
             std::cout << RED << "Error: No gold price data available!" << RESET << std::endl;
             return;
@@ -330,17 +330,17 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
         
         for (const auto& commodity : allCommodities) {
             if (commodity != RecordClass::GOLD) {
-                auto prices = statsController.getCommodityPrices(commodity);
+                auto prices = statsController.getTypePrices(commodity);
                 if (prices.size() == goldPrices.size() && !prices.empty()) {
                     predictorCommodities.push_back(commodity);
-                    predictorNames.push_back(statsController.getCommodityName(commodity));
+                    predictorNames.push_back(statsController.getTypeName(commodity));
                     predictors.push_back(prices);
                     std::cout << GREEN << "✓ " << std::setw(12) << std::left 
-                              << statsController.getCommodityName(commodity) 
+                              << statsController.getTypeName(commodity) 
                               << " (" << prices.size() << " points)" << RESET << "\n";
                 } else {
                     std::cout << YELLOW << "✗ " << std::setw(12) << std::left 
-                              << statsController.getCommodityName(commodity)
+                              << statsController.getTypeName(commodity)
                               << " - size mismatch: " << prices.size() << " vs " << goldPrices.size() << RESET << "\n";
                 }
             }
