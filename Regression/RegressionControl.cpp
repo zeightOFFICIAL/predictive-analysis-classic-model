@@ -323,7 +323,7 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
         
         std::cout << "Gold prices data points: " << goldPrices.size() << std::endl;
         
-        auto allCommodities = statsController.getAvailableCommodities();
+        auto allCommodities = statsController.getAvailableTypes();
         std::vector<std::string> predictorCommodities;
         std::vector<std::string> predictorNames;
         std::vector<std::vector<double>> predictors;

@@ -42,6 +42,21 @@ std::string StatisticsControl::interpretKurtosis(double value) const {
     return GREEN + "Normal" + RESET;
 }
 
+std::string StatisticsControl::interpretShapiroWilk(double value) const {
+    if (value > 0.45) {
+        return GREEN + "Normal" + RESET;
+    }
+    else if (value > 0.20) {
+        return GREEN + "Borderline normal" + RESET;
+    }
+    else if (value > 0.10) {
+        return YELLOW + "Moderately non-normal" + RESET;
+    }
+    else {
+        return RED + "Strongly non-normal" + RESET;
+    }
+}
+
 std::string StatisticsControl::formatModeOutput(const std::vector<double>& modes, bool hasSingleMode) const {
     if (modes.empty()) return YELLOW + "No mode (all unique)" + RESET;
     if (hasSingleMode) return MAGENTA + std::to_string(modes[0]) + RESET;
@@ -55,21 +70,21 @@ std::string StatisticsControl::formatModeOutput(const std::vector<double>& modes
 }
 
 void StatisticsControl::showFullReport() const {
-    auto commodities = statsRef.getAvailableCommodities();
-    if (commodities.empty()) {
+    auto types = statsRef.getAvailableTypes();
+    if (types.empty()) {
         std::cout << RED << "No statistics available!\n" << RESET;
         return;
     }
 
     printSectionHeader("FULL STATISTICAL REPORT");
-    for (const auto& commodity : commodities) {
-        showCommodityAnalysis(commodity);
+    for (const auto& type : types) {
+        showCommodityAnalysis(type);
     }
 }
 
 void StatisticsControl::showSummaryTable() const {
-    auto commodities = statsRef.getAvailableCommodities();
-    if (commodities.empty()) {
+    auto types = statsRef.getAvailableTypes();
+    if (types.empty()) {
         std::cout << RED << "No data available!\n" << RESET;
         return;
     }
@@ -84,26 +99,26 @@ void StatisticsControl::showSummaryTable() const {
               << RESET << "\n";
     std::cout << std::string(63, '-') << "\n";
 
-    for (const auto& commodity : commodities) {
-        const auto& stat = statsRef.getStatistics(commodity);
-        std::cout << std::left << std::setw(15) << commodity.substr(0, 14)
+    for (const auto& type : types) {
+        const auto& stat = statsRef.getStatistics(type);
+        std::cout << std::left << std::setw(15) << type.substr(0, 14)
                   << std::fixed << std::setprecision(4)
                   << std::setw(12) << stat.mean
-                  << std::setw(12) << stat.standardDeviation
+                  << std::setw(12) << stat.std
                   << std::setw(12) << stat.skewness
                   << std::setw(12) << stat.kurtosis
                   << "\n";
     }
 }
 
-void StatisticsControl::showCommodityAnalysis(const std::string& commodityName) const {
-    if (!commodityExists(commodityName)) {
-        std::cout << RED << "Commodity not found: " << commodityName << RESET << "\n";
+void StatisticsControl::showCommodityAnalysis(const std::string& typeName) const {
+    if (!typeExists(typeName)) {
+        std::cout << RED << "Commodity not found: " << typeName << RESET << "\n";
         return;
     }
 
-    const auto& stat = statsRef.getStatistics(commodityName);
-    auto getCommodityName = [](const std::string& code) -> std::string {
+    const auto& stat = statsRef.getStatistics(typeName);
+    auto getTypeClearName = [](const std::string& code) -> std::string {
         if (code == RecordClass::WTI_OIL) return "Crude Oil";
         if (code == RecordClass::GOLD) return "Gold";
         if (code == RecordClass::SILVER) return "Silver";
@@ -116,38 +131,33 @@ void StatisticsControl::showCommodityAnalysis(const std::string& commodityName) 
         if (code == RecordClass::PALLADIUM) return "Palladium";
         return "N/A";
     };
-    const std::string commodity = getCommodityName(commodityName);
-    printSectionHeader(commodity + " Analysis");
-    
+    const std::string type = getTypeClearName(typeName);
+    printSectionHeader(type + " Analysis");    
     printStatisticRow("Data Points", stat.count);
     printStatisticRow("Mean", stat.mean);
     printStatisticRow("Median", stat.median);
-    printStatisticRow("Mode", 0, formatModeOutput(stat.modes, stat.hasSingleMode));
-    
+    printStatisticRow("Mode", 0, formatModeOutput(stat.modes, stat.hasSingleMode));    
     printStatisticRow("Variance", stat.variance);
-    printStatisticRow("Std Deviation", stat.standardDeviation);
+    printStatisticRow("Std Deviation", stat.std);
     printStatisticRow("Range", stat.range, "(" + std::to_string(stat.min) + " to " + std::to_string(stat.max) + ")");
-    printStatisticRow("IQR", stat.iqr);
-    
+    printStatisticRow("IQR", stat.iqr);    
     std::cout << std::left << std::setw(20) << "Distribution Shape" << ": "
               << "Skewness= " << YELLOW << stat.skewness << RESET << " (" << interpretSkewness(stat.skewness) << "), "
               << "Kurtosis= " << YELLOW << stat.kurtosis << RESET << " (" << interpretKurtosis(stat.kurtosis) << ")\n";
-
     std::cout << std::left << std::setw(20) << "Shapiro-Wilk" << ": "
               << "Shapiro W= " << YELLOW << stat.shapiroW << RESET << ", "
-              << "Shapiro p= " << YELLOW << stat.shapiroP << RESET << " (" << stat.normality << ")\n";
+              << "Shapiro p= " << YELLOW << stat.shapiroP << RESET << " (" << interpretShapiroWilk(stat.shapiroP) << ")\n";
 }
 
 void StatisticsControl::showComparativeAnalysis() const {
-    auto commodities = statsRef.getAvailableCommodities();
-    if (commodities.size() < 2) {
+    auto types = statsRef.getAvailableTypes();
+    if (types.size() < 2) {
         std::cout << YELLOW << "Need at least 2 commodities for comparison\n" << RESET;
         return;
     }
 
-    printSectionHeader("MARKET VOLATILITY AND SKEW ANALYSIS");
-    
-    auto getCommodityName = [](const std::string& code) {
+    printSectionHeader("MARKET VOLATILITY AND SKEW ANALYSIS");    
+    auto getTypeClearName = [](const std::string& code) {
         if (code == RecordClass::WTI_OIL) return "Crude Oil";
         if (code == RecordClass::GOLD) return "Gold";
         if (code == RecordClass::SILVER) return "Silver";
@@ -161,39 +171,35 @@ void StatisticsControl::showComparativeAnalysis() const {
         return "N/A";
     };
 
-    auto mostVolatile = *std::max_element(commodities.begin(), commodities.end(),
+    auto mostVolatile = *std::max_element(types.begin(), types.end(),
         [this](const auto& a, const auto& b) {
-            return statsRef.getStatistics(a).standardDeviation < statsRef.getStatistics(b).standardDeviation;
-        });
-    
-    auto leastVolatile = *std::min_element(commodities.begin(), commodities.end(),
+            return statsRef.getStatistics(a).std < statsRef.getStatistics(b).std;
+        });    
+    auto leastVolatile = *std::min_element(types.begin(), types.end(),
         [this](const auto& a, const auto& b) {
-            return statsRef.getStatistics(a).standardDeviation < statsRef.getStatistics(b).standardDeviation;
-        });
-    
-    std::cout << "- " << BOLD << getCommodityName(mostVolatile) << RESET << " is the most volatile (ro = " 
+            return statsRef.getStatistics(a).std < statsRef.getStatistics(b).std;
+        });    
+    std::cout << "- " << BOLD << getTypeClearName(mostVolatile) << RESET << " is the most volatile (ro = " 
               << std::fixed << std::setprecision(4) 
-              << statsRef.getStatistics(mostVolatile).standardDeviation << ")\n";
-    std::cout << "- " << BOLD << getCommodityName(leastVolatile) << RESET << " is the least volatile (ro = " 
-              << statsRef.getStatistics(leastVolatile).standardDeviation << ")\n";
-              
-    auto mostRightSkewed = *std::max_element(commodities.begin(), commodities.end(),
+              << statsRef.getStatistics(mostVolatile).std << ")\n";
+    std::cout << "- " << BOLD << getTypeClearName(leastVolatile) << RESET << " is the least volatile (ro = " 
+              << statsRef.getStatistics(leastVolatile).std << ")\n";              
+    auto mostRightSkewed = *std::max_element(types.begin(), types.end(),
         [this](const auto& a, const auto& b) {
             return statsRef.getStatistics(a).skewness < statsRef.getStatistics(b).skewness;
-        });
-    
-    std::cout << "- " << BOLD << getCommodityName(mostRightSkewed) << RESET << " has strongest right skew ("
+        });    
+    std::cout << "- " << BOLD << getTypeClearName(mostRightSkewed) << RESET << " has strongest right skew ("
               << std::fixed << std::setprecision(4)
               << statsRef.getStatistics(mostRightSkewed).skewness << ")\n";
 }
 
-std::vector<std::string> StatisticsControl::getAvailableCommodities() const {
-    return statsRef.getAvailableCommodities();
+std::vector<std::string> StatisticsControl::getAvailableTypes() const {
+    return statsRef.getAvailableTypes();
 }
 
-bool StatisticsControl::commodityExists(const std::string& commodityName) const {
-    auto commodities = statsRef.getAvailableCommodities();
-    return std::find(commodities.begin(), commodities.end(), commodityName) != commodities.end();
+bool StatisticsControl::typeExists(const std::string& typeName) const {
+    auto types = statsRef.getAvailableTypes();
+    return std::find(types.begin(), types.end(), typeName) != types.end();
 }
 
 void StatisticsControl::showGoldCorrelations() const {
@@ -264,7 +270,7 @@ std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() co
     auto goldStats = statsRef.getStatistics(RecordClass::GOLD);
     if (goldStats.count == 0) return plots;
     
-    auto commodities = statsRef.getAvailableCommodities();
+    auto commodities = statsRef.getAvailableTypes();
     
     for (const auto& commodity : commodities) {
         if (commodity == RecordClass::GOLD) continue;
@@ -371,7 +377,7 @@ void StatisticsControl::createGNUplotScript(const PlotData& data) const {
 }
 
 void StatisticsControl::generateHistograms() const {
-    auto commodities = statsRef.getAvailableCommodities();
+    auto commodities = statsRef.getAvailableTypes();
     if (commodities.empty()) {
         std::cout << YELLOW << "No data available for histograms!\n" << RESET;
         return;
@@ -466,7 +472,7 @@ void StatisticsControl::generateHistograms() const {
 }
 
 void StatisticsControl::generateBoxplots() const {
-    auto commodities = statsRef.getAvailableCommodities();
+    auto commodities = statsRef.getAvailableTypes();
     if (commodities.empty()) {
         std::cout << YELLOW << "No data available for boxplots!\n" << RESET;
         return;
@@ -549,7 +555,7 @@ void StatisticsControl::generateBoxplots() const {
 }
 
 void StatisticsControl::generateCorrelationMatrix() const {
-    auto commodities = statsRef.getAvailableCommodities();
+    auto commodities = statsRef.getAvailableTypes();
     if (commodities.empty()) {
         std::cout << YELLOW << "No data available for correlation matrix!\n" << RESET;
         return;

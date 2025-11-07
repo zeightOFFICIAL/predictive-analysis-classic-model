@@ -10,71 +10,65 @@
 #include <string>
 
 
-StatisticsClass::StatisticsClass(const RecordClass& stockData)
-    : dataRef(stockData) {
+StatisticsClass::StatisticsClass(const RecordClass& data)
+    : dataRef(data) {
     calculateAll();
 }
 
 void StatisticsClass::calculateAll() {
-    auto commodities = dataRef.getAllCommodities();
+    auto types = dataRef.getAllCommodities();
     
-    for (const auto& commodity : commodities) {
-        auto pricesMap = dataRef.getAllPrices(commodity);
+    for (const auto& type : types) {
+        auto pricesMap = dataRef.getAllPrices(type);
         std::vector<double> prices;
         prices.reserve(pricesMap.size());
         
         for (const auto& [date, price] : pricesMap) {
             prices.push_back(price);
-        }
-        
+        }        
         if (prices.empty()) continue;
         
         Statistics stats;
+
         stats.count = prices.size();
         
         stats.mean = calculateMean(prices);
         stats.variance = calculateVariance(prices, stats.mean);
-        stats.standardDeviation = std::sqrt(stats.variance);
-        stats.median = calculateMedian(prices);
-        
+        stats.std = std::sqrt(stats.variance);
+        stats.median = calculateMedian(prices);        
         auto quartiles = calculateQuartiles(prices);
-        stats.iqr = quartiles[2] - quartiles[0]; // Q3 - Q1
-        
+        stats.iqr = quartiles[2] - quartiles[0];        
         auto [minIt, maxIt] = std::minmax_element(prices.begin(), prices.end());
         stats.min = *minIt;
         stats.max = *maxIt;
-        stats.range = stats.max - stats.min;
-        
+        stats.range = stats.max - stats.min;        
         stats.modes = calculateModes(prices);
         stats.hasSingleMode = (stats.modes.size() == 1);
-
-        auto [w, p, norm] = performShapiroWilkTest(prices);
+        auto [w, p] = performShapiroWilkTest(prices);
         stats.shapiroP = p;
-        stats.shapiroW = w;
-        stats.normality = norm;
-        
-        if (stats.standardDeviation > 0) {
-            stats.skewness = calculateSkewness(prices, stats.mean, stats.standardDeviation);
-            stats.kurtosis = calculateKurtosis(prices, stats.mean, stats.standardDeviation);
+        stats.shapiroW = w;  
+        if (stats.std > 0) {
+            stats.skewness = calculateSkewness(prices, stats.mean, stats.std);
+            stats.kurtosis = calculateKurtosis(prices, stats.mean, stats.std);
         }
         
-        statisticsMap[commodity] = stats;
+        statisticsMap[type] = stats;
     }
 }
 
 const StatisticsClass::Statistics& StatisticsClass::getStatistics(
-    const std::string& commodityName) const {
+    const std::string& typeName) const {
     static const Statistics emptyStats{};
-    auto it = statisticsMap.find(commodityName);
-    return (it != statisticsMap.end()) ? it->second : emptyStats;
+    auto type = statisticsMap.find(typeName);
+    return (type != statisticsMap.end()) ? type->second : emptyStats;
 }
 
-std::vector<std::string> StatisticsClass::getAvailableCommodities() const {
-    std::vector<std::string> commodities;
-    for (const auto& [commodity, _] : statisticsMap) {
-        commodities.push_back(commodity);
+std::vector<std::string> StatisticsClass::getAvailableTypes() const {
+    std::vector<std::string> types;
+    for (const auto& [type, _] : statisticsMap) {
+        types.push_back(type);
     }
-    return commodities;
+    return types;
 }
 
 double StatisticsClass::calculateMean(const std::vector<double>& values) {
@@ -96,21 +90,21 @@ double StatisticsClass::calculateVariance(const std::vector<double>& values, dou
 }
 
 double StatisticsClass::calculateSkewness(const std::vector<double>& values, 
-                                                   double mean, double stdDev) {
-    if (stdDev == 0) return 0;
+                                                   double mean, double std) {
+    if (std == 0) return 0;
     double sum = 0.0;
     for (double val : values) {
-        sum += std::pow((val - mean) / stdDev, 3);
+        sum += std::pow((val - mean) / std, 3);
     }
     return sum / values.size();
 }
 
 double StatisticsClass::calculateKurtosis(const std::vector<double>& values,
-                                                  double mean, double stdDev) {
-    if (stdDev == 0) return -3; 
+                                                  double mean, double std) {
+    if (std == 0) return -3; 
     double sum = 0.0;
     for (double val : values) {
-        sum += std::pow((val - mean) / stdDev, 4);
+        sum += std::pow((val - mean) / std, 4);
     }
     return (sum / values.size()) - 3;
 }
@@ -143,27 +137,27 @@ std::vector<double> StatisticsClass::calculateModes(const std::vector<double>& v
 std::vector<double> StatisticsClass::calculateQuartiles(std::vector<double> values) const {
     std::sort(values.begin(), values.end());
     return {
-        calculatePercentile(values, 0.25), // Q1
-        calculatePercentile(values, 0.50), // Q2 (median)
-        calculatePercentile(values, 0.75)  // Q3
+        calculatePercentile(values, 0.25),
+        calculatePercentile(values, 0.50),
+        calculatePercentile(values, 0.75)
     };
 }
 
-double StatisticsClass::calculatePercentile(const std::vector<double>& sortedValues, 
+double StatisticsClass::calculatePercentile(const std::vector<double>& values, 
                                                     double percentile) const {
-    if (sortedValues.empty()) return 0.0;
-    if (percentile <= 0.0) return sortedValues.front();
-    if (percentile >= 1.0) return sortedValues.back();
+    if (values.empty()) return 0.0;
+    if (percentile <= 0.0) return values.front();
+    if (percentile >= 1.0) return values.back();
     
-    double pos = percentile * (sortedValues.size() - 1);
+    double pos = percentile * (values.size() - 1);
     size_t lower = static_cast<size_t>(pos);
     double frac = pos - lower;
     
-    if (lower + 1 >= sortedValues.size()) {
-        return sortedValues.back();
+    if (lower + 1 >= values.size()) {
+        return values.back();
     }
     
-    return sortedValues[lower] + frac * (sortedValues[lower + 1] - sortedValues[lower]);
+    return values[lower] + frac * (values[lower + 1] - values[lower]);
 }
 
 std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const {
@@ -175,23 +169,23 @@ std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const
         goldPrices.push_back(price);
     }
     
-    auto commodities = dataRef.getAllCommodities();
+    auto types = dataRef.getAllCommodities();
     
-    for (const auto& commodity : commodities) {
-        if (commodity == RecordClass::GOLD) continue; 
+    for (const auto& type : types) {
+        if (type == RecordClass::GOLD) continue; 
         
-        auto pricesMap = dataRef.getAllPrices(commodity);
-        std::vector<double> commodityPrices;
+        auto pricesMap = dataRef.getAllPrices(type);
+        std::vector<double> typePrices;
         
         for (const auto& [date, price] : goldPricesMap) {
-            float commodityPrice = dataRef.getPrice(commodity, date);
-            if (commodityPrice != -1.0f) {
-                commodityPrices.push_back(commodityPrice);
+            float typePrice = dataRef.getPrice(type, date);
+            if (typePrice != -1.0f) {
+                typePrices.push_back(typePrice);
             }
         }
         
-        if (commodityPrices.size() == goldPrices.size() && !commodityPrices.empty()) {
-            correlations[commodity] = calculatePearsonCorrelation(goldPrices, commodityPrices);
+        if (typePrices.size() == goldPrices.size() && !typePrices.empty()) {
+            correlations[type] = calculatePearsonCorrelation(goldPrices, typePrices);
         }
     }
     
@@ -228,7 +222,7 @@ double StatisticsClass::calculatePearsonCorrelation(
     return numerator / (denominator_x * denominator_y);
 }
 
-static double normInv(double p) {
+static double normInversion(double p) {
     if (p <= 0.0) return -INFINITY;
     if (p >= 1.0) return INFINITY;
 
@@ -277,12 +271,12 @@ static double normInv(double p) {
     }
 }
 
-std::tuple<double, double, std::string> StatisticsClass::performShapiroWilkTest(
+std::tuple<double, double> StatisticsClass::performShapiroWilkTest(
     const std::vector<double>& values)
 {
     size_t n = values.size();
     if (n < 3) {
-        return { -1.0, -1.0, "n<3 → no test" };
+        return { -1.0, -1.0 };
     }
 
     std::vector<double> x = values;
@@ -293,13 +287,13 @@ std::tuple<double, double, std::string> StatisticsClass::performShapiroWilkTest(
     for (double v : x) ss += (v - mean) * (v - mean);
 
     if (ss == 0.0) {
-        return { 1.0, 1.0, "Perfect normal (constant)" };
+        return { 1.0, 1.0 };
     }
 
     std::vector<double> m(n);
     for (size_t i = 0; i < n; ++i) {
         double u = (i + 1.0 - 0.375) / (n + 0.25);
-        m[i] = normInv(u);
+        m[i] = normInversion(u);
     }
 
     double sum_m2 = 0.0;
@@ -332,19 +326,5 @@ std::tuple<double, double, std::string> StatisticsClass::performShapiroWilkTest(
     
     p = std::min(1.0, std::max(0.001, p));
 
-    std::string interp;
-    if (p > 0.10) {
-        interp = "Normal";
-    }
-    else if (p > 0.05) {
-        interp = "Borderline normal";
-    }
-    else if (p > 0.01) {
-        interp = "Moderately non-normal";
-    }
-    else {
-        interp = "Strongly non-normal";
-    }
-
-    return { W, p, interp };
+    return { W, p };
 }

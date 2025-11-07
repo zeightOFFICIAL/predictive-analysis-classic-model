@@ -11,11 +11,11 @@ public:
     
     void showFullReport() const;
     void showSummaryTable() const;
-    void showCommodityAnalysis(const std::string& commodityName) const;
+    void showCommodityAnalysis(const std::string& typeName) const;
     void showComparativeAnalysis() const;
     
-    std::vector<std::string> getAvailableCommodities() const;
-    bool commodityExists(const std::string& commodityName) const;
+    std::vector<std::string> getAvailableTypes() const;
+    bool typeExists(const std::string& typeName) const;
     void showGoldCorrelations() const;
     void generateScatterPlotsWithGNUplot() const;
     void generateHistograms() const;
@@ -32,6 +32,7 @@ private:
     void printStatisticRow(const std::string& label, double value, const std::string& unit = "") const;
     std::string interpretSkewness(double value) const;
     std::string interpretKurtosis(double value) const;
+    std::string interpretShapiroWilk(double value) const;
     std::string formatModeOutput(const std::vector<double>& modes, bool hasSingleMode) const;
 
     struct PlotData {

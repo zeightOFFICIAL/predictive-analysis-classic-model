@@ -54,7 +54,7 @@ static void displayItemsMenu(const std::vector<std::string>& items) {
 }
 
 static void runCustomRegression(const StatisticsControl& statsControl, const RegressionControl& regControl) {
-    auto items = statsControl.getAvailableCommodities();
+    auto items = statsControl.getAvailableTypes();
     if (items.empty()) {
         std::cout << RED_COLOR << "No commodities available for analysis!\n" << RESET;
         return;
