@@ -39,7 +39,7 @@ static void displayMenu() {
     std::cout << "12. Run regression analysis (significant predictors)\n";
     std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
     std::cout << "13. Generate histograms for all commodities\n";
-    std::cout << "134. Generate boxplots for all commodities\n";
+    std::cout << "14. Generate boxplots for all commodities\n";
     std::cout << "\n0. Exit program\n";
     std::cout << "Enter your choice (0-11): ";
 }

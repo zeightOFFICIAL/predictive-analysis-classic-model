@@ -19,7 +19,7 @@ public:
     void checkMulticollinearity(const std::vector<std::vector<double>>& predictors,
                                              const std::vector<std::string>& predictorNames) const;
 private:
-    const StatisticsControl& statsController;
+    const StatisticsControl& statsControl;
 
     void displayResults(const RegressionMetrics& results, 
                        const std::string& commodityLabel) const;

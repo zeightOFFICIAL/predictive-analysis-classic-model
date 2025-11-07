@@ -64,7 +64,7 @@ void RecordControl::displayDataForDate(const std::string& date) const {
         return;
     }
 
-    std::cout << "\n" << BOLD << "Date: " << date << RESET << "\n";
+    printHeader("DATA SUMMARY FOR " + date);
     std::cout << std::string(date.length() + 6, '-') << "\n";
     
     printCommodityPrice("WTI Oil", dataRef.getPrice(RecordClass::WTI_OIL, date));

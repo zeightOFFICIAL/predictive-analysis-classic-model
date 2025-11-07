@@ -374,7 +374,7 @@ void RegressionClass::printMultipleRegressionResults(
     for (size_t i = 1; i < results.coefficients.size(); ++i) {
         std::string sign = (results.coefficients[i] >= 0) ? " + " : " - ";
         std::string predName = (i - 1 < predictorNames.size()) ? predictorNames[i - 1] : "X" + std::to_string(i);
-        std::cout << sign << std::abs(results.coefficients[i]) << " × " << predName;
+        std::cout << sign << std::abs(results.coefficients[i]) << " x " << predName;
     }
     std::cout << "\n";
     
