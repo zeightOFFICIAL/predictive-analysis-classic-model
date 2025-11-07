@@ -22,12 +22,13 @@ const std::string RESET = "\033[0m";
 const std::string BOLD = "\033[1m";
 
 static void displayMenu() {
-    std::cout << "\n\n" << GREEN_COLOR << "=== ----------------------------- ===" << RESET;
+    std::cout << "\n\n" << GREEN_COLOR << "=== --------------------------------------------------------------------------------------- ===" << RESET;
     std::cout << "\n" << BLUE_COLOR << "====== COMMODITY ANALYSIS MENU ======" << RESET << "\n";
-    std::cout << "1. View prices for specific date\n";
+    std::cout << "1. Show prices for specific date\n";
     std::cout << "2. Show dataset overview\n";
-    std::cout << "3. View full statistics report\n";
+    std::cout << "3. Show full statistics report\n";
     std::cout << "4. Compare commodities\n";
+    std::cout << "\n" << GREEN_COLOR << "===== CORRELATION ANALYSIS MENU =====" << RESET << "\n";
     std::cout << "5. Analyze correlations with Gold\n";
     std::cout << "6. Generate correlation graphs\n";
     std::cout << "7. Generate correlation matrix\n";
@@ -35,13 +36,17 @@ static void displayMenu() {
     std::cout << "8. Run Silver-Gold regression\n";
     std::cout << "9. Run Copper-Gold regression\n";
     std::cout << "10. Run custom commodity regression\n";
-    std::cout << "11. Run regression analysis (all predictors)\n";
-    std::cout << "12. Run regression analysis (significant predictors)\n";
+    std::cout << "11. Run multi-regression analysis (all predictors)\n";
+    std::cout << "12. Run multi-regression analysis (LNG only)\n";
+    std::cout << "13. Run multi-regression analysis (plants)\n";
+    std::cout << "14. Run multi-regression analysis (metals)\n";
+    std::cout << "15. Run multi-regression analysis (significant predictors++)\n";
+    std::cout << "16. Run multi-regression analysis (significant predictors, two most)\n";
     std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
-    std::cout << "13. Generate histograms for all commodities\n";
-    std::cout << "14. Generate boxplots for all commodities\n";
+    std::cout << "17. Generate histograms for all commodities\n";
+    std::cout << "18. Generate boxplots for all commodities\n";
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-11): ";
+    std::cout << "Enter your choice (0-14): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -115,7 +120,12 @@ int main(int argc, char* argv[]) {
     StatisticsClass stats(data);
     StatisticsControl statsController(stats);
     RegressionControl regController(statsController);
-    const std::vector<std::string> significantPredictors = {"NG=F_closing_price"};
+
+    const std::vector<std::string> significantPredictors_set1 = {"NG=F_closing_price"};
+    const std::vector<std::string> significantPredictors_set2 = {"ZS=F_closing_price", "ZC=F_closing_price", "ZW=F_closing_price"};
+    const std::vector<std::string> significantPredictors_set3 = {"SI=F_closing_price", "HG=F_closing_price", "PA=F_closing_price", "PL=F_closing_price"};
+    const std::vector<std::string> significantPredictors_set4 = {"SI=F_closing_price", "NG=F_closing_price", "HG=F_closing_price", "ZS=F_closing_price"};
+    const std::vector<std::string> significantPredictors_set5 = {"NG=F_closing_price", "HG=F_closing_price"};
 
     int choice = 0;
     std::string input;
@@ -181,15 +191,31 @@ int main(int argc, char* argv[]) {
                 break;
 
             case 12:
-                regController.runMultipleRegressionSelected(significantPredictors);
+                regController.runMultipleRegressionSelected(significantPredictors_set1);
                 break;
-
+            
             case 13:
+                regController.runMultipleRegressionSelected(significantPredictors_set2);
+            break;
+
+            case 14:
+                regController.runMultipleRegressionSelected(significantPredictors_set3);
+            break;
+
+            case 15:
+                regController.runMultipleRegressionSelected(significantPredictors_set4);
+            break;
+
+            case 16:
+                regController.runMultipleRegressionSelected(significantPredictors_set5);
+            break;
+
+            case 17:
                 std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
                 statsController.generateHistograms();
                 break;
 
-            case 14:
+            case 18:
                 std::cout << CYAN_COLOR << "\nGenerating boxplots..." << RESET << "\n";
                 statsController.generateBoxplots();
                 break;

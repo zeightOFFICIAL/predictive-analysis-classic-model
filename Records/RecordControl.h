@@ -1,5 +1,5 @@
-#ifndef STOCKPRICESRECORDCONTROL_H
-#define STOCKPRICESRECORDCONTROL_H
+#ifndef RECORDCONTROL_H
+#define RECORDCONTROL_H
 
 #include "RecordClass.h"
 #include <string>
@@ -26,4 +26,4 @@ private:
     std::string formatPrice(float price) const;
 };
 
-#endif // STOCKPRICESRECORDCONTROL_H
+#endif

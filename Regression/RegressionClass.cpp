@@ -11,7 +11,6 @@
 #include <string>
 #include <limits>
 
-
 namespace LinearAlgebra {    
     std::vector<std::vector<double>> transpose(const std::vector<std::vector<double>>& matrix) {
         if (matrix.empty()) return {};
@@ -171,7 +170,7 @@ RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>
     double covXY = 0.0, varX = 0.0;
     for (size_t i = 0; i < n; ++i) {
         covXY += (X[i] - meanX) * (Y[i] - meanY);
-        varX += pow(X[i] - meanX, 2);
+        varX += std::pow(X[i] - meanX, 2);
     }
     results.beta1 = covXY / varX;
     results.beta0 = meanY - results.beta1 * meanX;    
@@ -182,8 +181,8 @@ RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>
     for (size_t i = 0; i < n; ++i) {
         results.fittedValues[i] = results.beta0 + results.beta1 * X[i];
         double residual = Y[i] - results.fittedValues[i];
-        results.TSS += pow(Y[i] - meanY, 2);
-        results.RSS += pow(residual, 2);
+        results.TSS += std::pow(Y[i] - meanY, 2);
+        results.RSS += std::pow(residual, 2);
     }
     
     results.ESS = results.TSS - results.RSS;
@@ -203,14 +202,13 @@ void RegressionClass::plotResiduals(
     const std::vector<double>& goldPrices,
     const std::vector<double>& otherPrices,
     const RegressionMetrics& results,
-    const std::string& typeName) 
-{
+    const std::string& typeName) {
+    
     if (goldPrices.size() != otherPrices.size() || goldPrices.size() != results.fittedValues.size()) {
         throw std::invalid_argument("Input vectors must have the same size.");
     }
 
     std::string sanitized = sanitizeFilename(typeName);
-
     std::filesystem::create_directories("plots/regression/" + sanitized);
 
     const std::string residualsFile = "residuals_" + sanitized + ".dat";
@@ -232,7 +230,7 @@ void RegressionClass::plotResiduals(
     }
 
     script << "set terminal pngcairo enhanced font 'Arial,12'\n"
-           << "set output 'plots/regression/" << sanitized << "/residuals" << ".png'\n"
+           << "set output 'plots/regression/" << sanitized << "/residuals.png'\n"
            << "set title 'Residuals Plot (" << typeName << " vs Gold)'\n"
            << "set xlabel 'Gold Price (USD)'\n"
            << "set ylabel 'Residuals (Actual - Predicted)'\n"
@@ -242,20 +240,20 @@ void RegressionClass::plotResiduals(
            << "     0 with lines lc rgb 'black' title 'Zero line'\n";
     script.close();
 
-    int status = system(("gnuplot " + scriptFile).c_str());
+    int status = std::system(("gnuplot " + scriptFile).c_str());
     if (status != 0) {
         throw std::runtime_error("Gnuplot failed to execute.");
     }
 
-    std::remove(residualsFile.c_str());
-    std::remove(scriptFile.c_str());
+    std::filesystem::remove(residualsFile);
+    std::filesystem::remove(scriptFile);
 }
 
 std::string RegressionClass::getSignificanceStars(double pValue) {
-    if (pValue < 0.2) return "***";
-    if (pValue < 0.1) return "**";
+    if (pValue < 0.001) return "***";
+    if (pValue < 0.01) return "**";
     if (pValue < 0.05) return "*";
-    if (pValue < 0.5) return ".";
+    if (pValue < 0.1) return ".";
     return "not sig";
 }
 
@@ -263,14 +261,13 @@ void RegressionClass::generatePlot(
     const std::vector<double>& goldPrices,
     const std::vector<double>& otherPrices,
     const RegressionMetrics& results,
-    const std::string& typeName) 
-{
+    const std::string& typeName) {
+    
     if (goldPrices.size() != otherPrices.size() || goldPrices.size() != results.fittedValues.size()) {
         throw std::invalid_argument("Input vectors must have the same size.");
     }
 
     std::string sanitized = sanitizeFilename(typeName);
-
     std::filesystem::create_directories("plots/regression/" + sanitized);
 
     const std::string dataFilename = "regression_" + sanitized + ".dat";
@@ -292,7 +289,7 @@ void RegressionClass::generatePlot(
     }
 
     script << "set terminal pngcairo enhanced font 'Arial,12'\n"
-           << "set output 'plots/regression/" << sanitized << "/regression" << ".png'\n"
+           << "set output 'plots/regression/" << sanitized << "/regression.png'\n"
            << "set title '" << typeName << " vs Gold Regression (R² = " << std::fixed << std::setprecision(3) << results.R2 << ")'\n"
            << "set xlabel 'Gold Price (USD)'\n"
            << "set ylabel '" << typeName << " Price (USD)'\n"
@@ -301,13 +298,13 @@ void RegressionClass::generatePlot(
            << "     '' using 1:3 with lines lw 2 lc rgb 'red' title 'Fitted'\n";
     script.close();
 
-    int status = system(("gnuplot " + scriptFilename).c_str());
+    int status = std::system(("gnuplot " + scriptFilename).c_str());
     if (status != 0) {
         throw std::runtime_error("Gnuplot execution failed.");
     }
 
-    std::remove(dataFilename.c_str());
-    std::remove(scriptFilename.c_str());
+    std::filesystem::remove(dataFilename);
+    std::filesystem::remove(scriptFilename);
 }
 
 void RegressionClass::calculateStandardErrors(MultipleRegressionMetrics& results,
@@ -319,14 +316,13 @@ void RegressionClass::calculateStandardErrors(MultipleRegressionMetrics& results
     if (n <= p || results.RSS < 1e-10) {
         return;
     }
-        double mse = results.RSS / (n - p);
     
+    double mse = results.RSS / (n - p);
     auto XT = LinearAlgebra::transpose(X);
     auto XTX = LinearAlgebra::multiply(XT, X);
     auto invXTX = LinearAlgebra::invertMatrix(XTX);
     
     if (invXTX.empty()) {
-        std::cout << "Warning: Could not invert X'X matrix, using simplified SE calculation\n";
         results.standardErrors.resize(p, std::sqrt(mse));
         results.tStatistics.resize(p, 0.0);
         results.tpValues.resize(p, 1.0);
@@ -350,24 +346,69 @@ void RegressionClass::calculateStandardErrors(MultipleRegressionMetrics& results
     }
 }
 
+static double incompleteBeta(double a, double b, double x) {
+    const double EPS = 1e-12;
+    const int MAX_ITER = 200;
+
+    if (x <= 0.0) return 0.0;
+    if (x >= 1.0) return 1.0;
+
+    double lnBeta = std::lgamma(a) + std::lgamma(b) - std::lgamma(a + b);
+
+    bool use_symmetry = (x > (a + 1.0) / (a + b + 2.0));
+    if (use_symmetry) x = 1.0 - x, std::swap(a, b);
+
+    double qab = a + b;
+    double qap = a + 1.0;
+    double qam = a - 1.0;
+    double c = 1.0;
+    double d = 1.0 - qab * x / qap;
+    if (std::fabs(d) < std::numeric_limits<double>::min()) d = std::numeric_limits<double>::min();
+    d = 1.0 / d;
+    double h = d;
+
+    for (int m = 1; m <= MAX_ITER; ++m) {
+        int m2 = 2 * m;
+        double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+        d = 1.0 + aa * d;
+        if (std::fabs(d) < std::numeric_limits<double>::min()) d = std::numeric_limits<double>::min();
+        c = 1.0 + aa / c;
+        if (std::fabs(c) < std::numeric_limits<double>::min()) c = std::numeric_limits<double>::min();
+        d = 1.0 / d;
+        h *= d * c;
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+        d = 1.0 + aa * d;
+        if (std::fabs(d) < std::numeric_limits<double>::min()) d = std::numeric_limits<double>::min();
+        c = 1.0 + aa / c;
+        if (std::fabs(c) < std::numeric_limits<double>::min()) c = std::numeric_limits<double>::min();
+        d = 1.0 / d;
+        double del = d * c;
+        h *= del;
+        if (std::fabs(del - 1.0) < EPS) break;
+    }
+
+    double front = std::exp(a * std::log(x) + b * std::log(1.0 - x) - lnBeta) / a;
+    double result = front * h;
+    return use_symmetry ? 1.0 - result : result;
+}
+
 double RegressionClass::calculatePValue(double statistic, int df1, int df2) {
     if (df1 <= 0 || df2 <= 0) return 1.0;
-    
-    if (statistic > 3.5) return 0.0005;
-    if (statistic > 3.0) return 0.001;
-    if (statistic > 2.8) return 0.005;
-    if (statistic > 2.5) return 0.01;
-    if (statistic > 2.0) return 0.05;
-    if (statistic > 1.7) return 0.09;
-    if (statistic > 1.3) return 0.2;
-    return 0.3;
+    if (statistic < 0) statistic = 0;
+
+    double x = (df1 * statistic) / (df1 * statistic + df2);
+    double a = df1 / 2.0;
+    double b = df2 / 2.0;
+    double pLower = incompleteBeta(a, b, x);
+    double pUpper = 1.0 - pLower; 
+    return pUpper;
 }
 
 void RegressionClass::printMultipleRegressionResults(
     const MultipleRegressionMetrics& results,
     const std::vector<std::string>& predictorNames) {
     
-    std::cout << "\n" << "=== MULTIPLE REGRESSION RESULTS ===" << "\n";
+    std::cout << "\n=== MULTIPLE REGRESSION RESULTS ===\n";
     
     std::cout << "\nRegression Equation:\n";
     std::cout << "Gold Price = " << std::fixed << std::setprecision(6) << results.coefficients[0];
@@ -378,11 +419,11 @@ void RegressionClass::printMultipleRegressionResults(
     }
     std::cout << "\n";
     
-    std::cout << "\n" << "Model Quality Metrics:" << "\n";
+    std::cout << "\nModel Quality Metrics:\n";
     std::cout << std::fixed << std::setprecision(6);
     std::cout << "R-squared: " << results.R2 << " (" << (results.R2 * 100) << "%)\n";
     std::cout << "Adjusted R-squared: " << results.adjustedR2 << "\n";
-    std::cout << "F-statistic: " << results.Fstatistic << " (p-value: " << results.FpValue << ")\n";
+    std::cout << "F-statistic: " << results.Fstatistic << "\n";
     std::cout << "Total Observations: " << results.fittedValues.size() << "\n";
     std::cout << "Number of Predictors: " << (results.coefficients.size() - 1) << "\n";
     
@@ -391,7 +432,7 @@ void RegressionClass::printMultipleRegressionResults(
     std::cout << "Explained Sum of Squares (ESS): " << results.ESS << "\n";
     std::cout << "Residual Sum of Squares (RSS): " << results.RSS << "\n";
     
-    std::cout << "\n" << "Coefficient Significance:" << "\n";
+    std::cout << "\nCoefficient Significance:\n";
     std::cout << std::left << std::setw(15) << "Variable" 
               << std::setw(15) << "Coefficient" 
               << std::setw(12) << "Std Error" 
@@ -430,7 +471,6 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegression(
     MultipleRegressionMetrics results;
     
     if (predictors.empty() || response.empty()) {
-        std::cerr << "Error: Empty predictors or response vector\n";
         return results;
     }
     
@@ -439,14 +479,9 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegression(
     
     for (const auto& predictor : predictors) {
         if (predictor.size() != n) {
-            std::cerr << "Error: Predictor size mismatch. Expected: " << n 
-                      << ", Got: " << predictor.size() << "\n";
             return results;
         }
     }
-    
-    std::cout << "Calculating multiple regression with " << n 
-              << " observations and " << p << " predictors..."  << "\n";
     
     std::vector<std::vector<double>> scaledPredictors = predictors;
     std::vector<double> means(p, 0.0);
@@ -481,7 +516,6 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegression(
     
     results.coefficients = LinearAlgebra::solveOLS(X, response, 0.1);
     if (results.coefficients.empty()) {
-        std::cerr <<"Error: Failed to calculate OLS coefficients\n";
         return results;
     }
     

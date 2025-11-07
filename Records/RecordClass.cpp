@@ -106,7 +106,7 @@ time_t RecordClass::getLatestDate() const {
 }
 
 std::string RecordClass::formatDate(time_t date) const {
-    std::tm* tm = localtime(&date);
+    std::tm* tm = std::localtime(&date);
     if (!tm) return "";
     
     std::ostringstream oss;
@@ -131,9 +131,9 @@ time_t RecordClass::parseDate(const std::string& dateStr) const {
     
     tm.tm_mon -= 1;
     if (tm.tm_year >= 0 && tm.tm_year < 100) {
-        tm.tm_year += 100; 
+        tm.tm_year += 100;
     }
     
-    time_t time = mktime(&tm);
+    time_t time = std::mktime(&tm);
     return (time == -1) ? -1 : time;
 }

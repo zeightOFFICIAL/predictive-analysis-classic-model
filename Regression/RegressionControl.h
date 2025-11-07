@@ -14,18 +14,16 @@ public:
     void runCommodityRegression(const std::string& commodityName, const std::string& commodityLabel) const;
     void runMultipleRegressionAllCommodities() const;
     void runMultipleRegressionSelected(const std::vector<std::string>& selectedCommodities) const;
-    void displayMultipleRegressionResults(const MultipleRegressionMetrics& results,
-                                        const std::vector<std::string>& predictorNames) const;
-    void checkMulticollinearity(const std::vector<std::vector<double>>& predictors,
-                                             const std::vector<std::string>& predictorNames) const;
+    
 private:
     const StatisticsControl& statsControl;
 
     void displayResults(const RegressionMetrics& results, 
                        const std::string& commodityLabel) const;
-    
-    std::vector<double> getAllCommodityPrices(const std::string& commodity, 
-                                            size_t requiredSize) const;
+    void displayMultipleRegressionResults(const MultipleRegressionMetrics& results,
+                                        const std::vector<std::string>& predictorNames) const;
+    void checkMulticollinearity(const std::vector<std::vector<double>>& predictors,
+                                             const std::vector<std::string>& predictorNames) const;
     void runReducedModel(const std::vector<std::vector<double>>& allPredictors,
                         const std::vector<std::string>& allPredictorNames,
                         const std::vector<double>& goldPrices,
@@ -37,4 +35,4 @@ private:
                       size_t reducedPredictors) const;
 };
 
-#endif // REGRESSIONCONTROL_H
+#endif

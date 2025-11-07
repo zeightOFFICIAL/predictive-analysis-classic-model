@@ -3,7 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <fstream>
-#include <math.h>
+#include <cmath>
 #include <filesystem>
 
 namespace {
@@ -43,18 +43,10 @@ std::string StatisticsControl::interpretKurtosis(double value) const {
 }
 
 std::string StatisticsControl::interpretShapiroWilk(double value) const {
-    if (value > 0.45) {
-        return GREEN + "Normal" + RESET;
-    }
-    else if (value > 0.20) {
-        return GREEN + "Borderline normal" + RESET;
-    }
-    else if (value > 0.10) {
-        return YELLOW + "Moderately non-normal" + RESET;
-    }
-    else {
-        return RED + "Strongly non-normal" + RESET;
-    }
+    if (value > 0.45) return GREEN + "Normal" + RESET;
+    else if (value > 0.20) return GREEN + "Borderline normal" + RESET;
+    else if (value > 0.10) return YELLOW + "Moderately non-normal" + RESET;
+    else return RED + "Strongly non-normal" + RESET;
 }
 
 std::string StatisticsControl::formatModeOutput(const std::vector<double>& modes, bool hasSingleMode) const {
@@ -131,6 +123,7 @@ void StatisticsControl::showCommodityAnalysis(const std::string& typeName) const
         if (code == RecordClass::PALLADIUM) return "Palladium";
         return "N/A";
     };
+    
     const std::string type = getTypeClearName(typeName);
     printSectionHeader(type + " Analysis");    
     printStatisticRow("Data Points", stat.count);
@@ -285,7 +278,7 @@ std::vector<StatisticsControl::PlotData> StatisticsControl::preparePlotData() co
         for (const auto& [date, goldPrice] : goldPricesMap) {
             auto it = otherPricesMap.find(date);
             if (it != otherPricesMap.end()) {
-                plot.points.emplace_back(goldPrice, it->second);
+                plot.points.emplace_back(static_cast<double>(goldPrice), static_cast<double>(it->second));
             }
         }
         
@@ -320,15 +313,14 @@ void StatisticsControl::generateScatterPlotsWithGNUplot() const {
     
     for (const auto& plot : plotsData) {
         createGNUplotScript(plot);
-        system("gnuplot plot_script.gp");
+        system(("gnuplot plot_script_" + getSanitizedTypeName(plot.type) + ".gp").c_str());
         std::cout << "\nGenerated plot for Gold vs " << getTypeName(plot.type) 
                   << " (correlation: " << std::fixed << std::setprecision(4)
                   << plot.correlation << ")";
 
         std::filesystem::remove("plot_" + plot.type + ".dat");
+        std::filesystem::remove("plot_script_" + getSanitizedTypeName(plot.type) + ".gp");
     }
-
-    std::filesystem::remove("plot_script.gp");
 }
 
 void StatisticsControl::exportPlotData(const std::vector<PlotData>& allData) const {
@@ -361,10 +353,10 @@ std::string StatisticsControl::getSanitizedTypeName(const std::string& code) con
 }
 
 void StatisticsControl::createGNUplotScript(const PlotData& data) const {
-    
-    std::ofstream script("plot_script.gp");    
+    std::string sanitized = getSanitizedTypeName(data.type);
+    std::ofstream script("plot_script_" + sanitized + ".gp");    
     script << "set terminal pngcairo enhanced font 'Arial,12'\n";
-    script << "set output 'plots/correlation/" << getSanitizedTypeName(data.type) << ".png'\n";
+    script << "set output 'plots/correlation/" << sanitized << ".png'\n";
     script << "set title 'Gold vs " << getTypeName(data.type) 
            << " (r = " << std::fixed << std::setprecision(3) << data.correlation << ")'\n";
     script << "set xlabel 'Gold Price (USD)'\n";
@@ -438,7 +430,7 @@ void StatisticsControl::generateHistograms() const {
         std::ofstream script(scriptFile);
         if (!script) {
             std::cerr << RED << "Failed to create Gnuplot script for " << type << RESET << "\n";
-            std::remove(dataFile.c_str());
+            std::filesystem::remove(dataFile);
             continue;
         }
 
@@ -463,8 +455,8 @@ void StatisticsControl::generateHistograms() const {
                       << " at plots/histograms/" << sanitized << ".png" << RESET << "\n";
         }
 
-        std::remove(dataFile.c_str());
-        std::remove(scriptFile.c_str());
+        std::filesystem::remove(dataFile);
+        std::filesystem::remove(scriptFile);
     }
 }
 
@@ -525,7 +517,6 @@ void StatisticsControl::generateBoxplots() const {
                << "set style fill solid 0.45 border lt -1\n"
                << "set boxwidth 0.5\n"
                << "set key top left\n\n"
-
                << "plot '" << boxFile << "' using 1:3:2:6:5 with candlesticks lc rgb '#834ea7ff' lw 2 notitle, \\\n"
                << "     '' using 1:4:4:4:4 with candlesticks lt 1 lw 4 notitle";
         
@@ -545,9 +536,9 @@ void StatisticsControl::generateBoxplots() const {
             std::cerr << RED << "Gnuplot failed for " << niceName << RESET << "\n";
         }
 
-        std::remove(boxFile.c_str());
-        std::remove(outFile.c_str());
-        std::remove(scriptFile.c_str());
+        std::filesystem::remove(boxFile);
+        std::filesystem::remove(outFile);
+        std::filesystem::remove(scriptFile);
     }
 }
 
@@ -729,26 +720,7 @@ std::vector<double> StatisticsControl::getTypePrices(const std::string& type) co
     auto pricesMap = statsRef.getDataRef().getAllPrices(type);
     std::vector<double> prices;
     for (const auto& [_, price] : pricesMap) {
-        prices.push_back(price);
+        prices.push_back(static_cast<double>(price));
     }
     return prices;
-}
-
-void analyzeSilverGoldRegression(const std::vector<double>& goldPrices, 
-        const std::vector<double>& silverPrices) {
-    double meanGold = StatisticsClass::calculateMean(goldPrices);
-    double meanSilver = StatisticsClass::calculateMean(silverPrices);
-
-    double cov = 0.0, varGold = 0.0;
-    for (size_t i = 0; i < goldPrices.size(); ++i) {
-    cov += (goldPrices[i] - meanGold) * (silverPrices[i] - meanSilver);
-    varGold += pow(goldPrices[i] - meanGold, 2);
-    }
-
-    double beta1 = cov / varGold; 
-    double beta0 = meanSilver - beta1 * meanGold; 
-
-    std::cout << "Actual OLS coefficients:\n";
-    std::cout << "Slope (β1): " << beta1 << "\n";
-    std::cout << "Intercept (β0): " << beta0 << "\n";
 }

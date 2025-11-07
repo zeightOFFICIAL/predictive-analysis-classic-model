@@ -51,4 +51,4 @@ private:
     double calculatePercentile(const std::vector<double>& values, double percentile) const;
 };
 
-#endif // STATISTICSCLASS_H
+#endif

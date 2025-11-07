@@ -37,4 +37,4 @@ private:
     time_t parseDate(const std::string& dateStr) const;
 };
 
-#endif // RECORDCLASS_H
+#endif

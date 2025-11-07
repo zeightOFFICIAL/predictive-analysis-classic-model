@@ -1,11 +1,10 @@
+#include "RegressionControl.h"
 #include <iostream>
 #include <numeric> 
 #include <cmath>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
-#include "RegressionControl.h"
-#include "../Records/RecordClass.h"
 
 namespace {
     const std::string RED = "\033[31m";
@@ -24,9 +23,9 @@ void RegressionControl::displayResults(const RegressionMetrics& results,
                                        const std::string& typeLabel) const {
     std::cout << "\n" << GREEN << "=== REGRESSION RESULTS ===" << RESET << "\n";
     std::cout << typeLabel << " Price = " << std::fixed << std::setprecision(6) 
-              << results.beta0 << " + " << results.beta1 << " × Gold Price\n";
+              << results.beta0 << " + " << results.beta1 << " x Gold Price\n";
     
-    std::cout << "\nGoodness of Fit:\n";
+    std::cout << "\nFit:\n";
     std::cout << "R-squared: " << results.R2 << " (" << (results.R2 * 100) << "%)\n";
     std::cout << "TSS: " << results.TSS << " (Total Sum of Squares)\n";
     std::cout << "ESS: " << results.ESS << " (Explained Sum of Squares)\n";
@@ -36,7 +35,7 @@ void RegressionControl::displayResults(const RegressionMetrics& results,
     for (double r : results.residuals) {
         sumSqResiduals += r * r;
     }
-    double rmse = sqrt(sumSqResiduals / results.residuals.size());
+    double rmse = std::sqrt(sumSqResiduals / results.residuals.size());
     double mae = 0.0;
     for (double r : results.residuals) {
         mae += std::abs(r);
@@ -93,15 +92,15 @@ void RegressionControl::runCommodityRegression(const std::string& typeName,
         std::cout << "\nGenerate regression plot? (y/n): ";
         char plotChoice;
         std::cin >> plotChoice;
-        if (tolower(plotChoice) == 'y') {
+        if (std::tolower(plotChoice) == 'y') {
             RegressionClass::generatePlot(goldPrices, otherPrices, results, typeLabel);
-            std::cout << GREEN << "✓ Regression plot generated" << RESET << std::endl;
+            std::cout << GREEN << "Regression plot generated" << RESET << std::endl;
             
             std::cout << "Generate residual plot? (y/n): ";
             std::cin >> plotChoice;
-            if (tolower(plotChoice) == 'y') {
+            if (std::tolower(plotChoice) == 'y') {
                 RegressionClass::plotResiduals(goldPrices, otherPrices, results, typeLabel);
-                std::cout << GREEN << "✓ Residual plot generated" << RESET << std::endl;
+                std::cout << GREEN << "Residual plot generated" << RESET << std::endl;
             }
         }
         
@@ -146,7 +145,6 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
             return;
         }
         
-        std::cout << "Gold prices data points: " << goldPrices.size() << std::endl;
         
         std::vector<std::string> predictorNames;
         std::vector<std::vector<double>> predictors;
@@ -161,13 +159,7 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
             if (prices.size() == goldPrices.size() && !prices.empty()) {
                 predictorNames.push_back(statsControl.getTypeName(type));
                 predictors.push_back(prices);
-                std::cout << GREEN << "✓ " << std::setw(12) << std::left 
-                          << statsControl.getTypeName(type) 
-                          << " (" << prices.size() << " points)\n" << RESET;
-            } else {
-                std::cout << YELLOW << "✗ " << std::setw(12) << std::left 
-                          << statsControl.getTypeName(type)
-                          << " - size mismatch: " << prices.size() << " vs " << goldPrices.size() << RESET << "\n";
+                
             }
         }
         
@@ -183,7 +175,7 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
             return;
         }
         
-        std::cout << CYAN << "\nFinal model: " << predictors.size() << " predictors, " 
+        std::cout << CYAN << "Final model: " << predictors.size() << " predictors, " 
                   << goldPrices.size() << " observations" << RESET << "\n";
         
         checkMulticollinearity(predictors, predictorNames);
@@ -197,7 +189,7 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
             std::cout << "\n" << YELLOW << "Try reduced model with only significant predictors? (y/n): " << RESET;
             char choice;
             std::cin >> choice;
-            if (tolower(choice) == 'y') {
+            if (std::tolower(choice) == 'y') {
                 runReducedModel(predictors, predictorNames, goldPrices, results);
             }
         }
@@ -301,7 +293,6 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
             return;
         }
         
-        std::cout << "Gold prices data points: " << goldPrices.size() << std::endl;
         
         auto allTypes = statsControl.getAvailableTypes();
         std::vector<std::string> predictorTypes;
@@ -315,13 +306,9 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
                     predictorTypes.push_back(type);
                     predictorNames.push_back(statsControl.getTypeName(type));
                     predictors.push_back(prices);
-                    std::cout << GREEN << "✓ " << std::setw(12) << std::left 
+                    std::cout << GREEN << std::setw(12) << std::left 
                               << statsControl.getTypeName(type) 
                               << " (" << prices.size() << " points)" << RESET << "\n";
-                } else {
-                    std::cout << YELLOW << "✗ " << std::setw(12) << std::left 
-                              << statsControl.getTypeName(type)
-                              << " - size mismatch: " << prices.size() << " vs " << goldPrices.size() << RESET << "\n";
                 }
             }
         }
@@ -331,7 +318,7 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
             return;
         }
         
-        std::cout << CYAN << "\nFinal model: " << predictors.size() << " predictors, " 
+        std::cout << CYAN << "Final model: " << predictors.size() << " predictors, " 
                   << goldPrices.size() << " observations" << RESET << "\n";
         
         checkMulticollinearity(predictors, predictorNames);
@@ -355,11 +342,11 @@ void RegressionControl::checkMulticollinearity(const std::vector<std::vector<dou
         for (size_t j = i + 1; j < p; ++j) {
             double corr = StatisticsClass::calculatePearsonCorrelation(predictors[i], predictors[j]);
             if (std::abs(corr) > 0.8) {
-                std::cout << RED << "⚠ HIGH CORRELATION: " << predictorNames[i] << " vs " 
+                std::cout << RED << "!!! HIGH CORRELATION: " << predictorNames[i] << " vs " 
                           << predictorNames[j] << " = " << std::fixed << std::setprecision(3) 
-                          << corr << RESET << "\n";
+                          << corr << RESET << "\n"; 
             } else if (std::abs(corr) > 0.6) {
-                std::cout << YELLOW << "⚠ Moderate correlation: " << predictorNames[i] << " vs " 
+                std::cout << YELLOW << "!! Moderate correlation: " << predictorNames[i] << " vs " 
                           << predictorNames[j] << " = " << std::fixed << std::setprecision(3) 
                           << corr << RESET << "\n";
             }
@@ -373,15 +360,7 @@ void RegressionControl::displayMultipleRegressionResults(const MultipleRegressio
     
     std::cout << "\n" << YELLOW << "=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
     
-    if (results.FpValue < 0.05) {
-        std::cout << GREEN << "✓ The overall regression model is statistically significant " 
-                  << "(F-test p-value: " << std::fixed << std::setprecision(4) << results.FpValue << ")" << RESET << "\n";
-    } else {
-        std::cout << RED << "✗ The overall regression model is NOT statistically significant " 
-                  << "(F-test p-value: " << std::fixed << std::setprecision(4) << results.FpValue << ")" << RESET << "\n";
-    }
-    
-    std::cout << "✓ The model explains " << std::fixed << std::setprecision(2) 
+    std::cout << "The model explains " << std::fixed << std::setprecision(2) 
               << (results.R2 * 100) << "% of gold price variation\n";
     
     if (!results.coefficients.empty()) {
@@ -414,6 +393,4 @@ void RegressionControl::displayMultipleRegressionResults(const MultipleRegressio
     std::cout << "\n" << BLUE << "Model Diagnostics:" << RESET << "\n";
     std::cout << "Root Mean Square Error (RMSE): $" << std::fixed << std::setprecision(2) << rmse << "\n";
     std::cout << "Mean Absolute Error (MAE): $" << std::fixed << std::setprecision(2) << mae << "\n";
-    
-    std::cout << "\n" << MAGENTA << "Significance codes: *** p < 0.001, ** p < 0.01, * p < 0.05, . p < 0.1" << RESET << "\n";
 }

@@ -87,7 +87,7 @@ void RecordControl::displayDataSummary() const {
     }
 
     printHeader("DATASET SUMMARY");
-    std::cout << "Records:    " << BOLD << dates.size() << RESET << "\n";
+    std::cout << "Records: " << BOLD << dates.size() << RESET << "\n";
     std::cout << "Date Range: " << BOLD 
               << dataRef.formatDate(dates.front()) << " to " 
               << dataRef.formatDate(dates.back()) << RESET << "\n";

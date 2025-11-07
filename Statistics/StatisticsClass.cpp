@@ -4,11 +4,6 @@
 #include <cmath>
 #include <map>
 #include <tuple>
-#include <vector>
-#include <cmath>
-#include <tuple>
-#include <string>
-
 
 StatisticsClass::StatisticsClass(const RecordClass& data)
     : dataRef(data) {
@@ -24,14 +19,12 @@ void StatisticsClass::calculateAll() {
         prices.reserve(pricesMap.size());
         
         for (const auto& [date, price] : pricesMap) {
-            prices.push_back(price);
+            prices.push_back(static_cast<double>(price));
         }        
         if (prices.empty()) continue;
         
         Statistics stats;
-
         stats.count = prices.size();
-        
         stats.mean = calculateMean(prices);
         stats.variance = calculateVariance(prices, stats.mean);
         stats.std = std::sqrt(stats.variance);
@@ -59,8 +52,8 @@ void StatisticsClass::calculateAll() {
 const StatisticsClass::Statistics& StatisticsClass::getStatistics(
     const std::string& typeName) const {
     static const Statistics emptyStats{};
-    auto type = statisticsMap.find(typeName);
-    return (type != statisticsMap.end()) ? type->second : emptyStats;
+    auto it = statisticsMap.find(typeName);
+    return (it != statisticsMap.end()) ? it->second : emptyStats;
 }
 
 std::vector<std::string> StatisticsClass::getAvailableTypes() const {
@@ -86,7 +79,7 @@ double StatisticsClass::calculateVariance(const std::vector<double>& values, dou
     for (double val : values) {
         sum += std::pow(val - mean, 2);
     }
-    return sum / values.size(); 
+    return sum / values.size();
 }
 
 double StatisticsClass::calculateSkewness(const std::vector<double>& values, 
@@ -101,7 +94,7 @@ double StatisticsClass::calculateSkewness(const std::vector<double>& values,
 
 double StatisticsClass::calculateKurtosis(const std::vector<double>& values,
                                                   double mean, double std) {
-    if (std == 0) return -3; 
+    if (std == 0) return -3;
     double sum = 0.0;
     for (double val : values) {
         sum += std::pow((val - mean) / std, 4);
@@ -166,21 +159,21 @@ std::map<std::string, double> StatisticsClass::calculateGoldCorrelations() const
     auto goldPricesMap = dataRef.getAllPrices(RecordClass::GOLD);
     std::vector<double> goldPrices;
     for (const auto& [_, price] : goldPricesMap) {
-        goldPrices.push_back(price);
+        goldPrices.push_back(static_cast<double>(price));
     }
     
     auto types = dataRef.getAllCommodities();
     
     for (const auto& type : types) {
-        if (type == RecordClass::GOLD) continue; 
+        if (type == RecordClass::GOLD) continue;
         
         auto pricesMap = dataRef.getAllPrices(type);
         std::vector<double> typePrices;
         
-        for (const auto& [date, price] : goldPricesMap) {
+        for (const auto& [date, _] : goldPricesMap) {
             float typePrice = dataRef.getPrice(type, date);
             if (typePrice != -1.0f) {
-                typePrices.push_back(typePrice);
+                typePrices.push_back(static_cast<double>(typePrice));
             }
         }
         
@@ -212,8 +205,8 @@ double StatisticsClass::calculatePearsonCorrelation(
     
     double n = static_cast<double>(x.size());
     double numerator = sum_xy - (sum_x * sum_y) / n;
-    double denominator_x = sqrt((sum_x2 - (sum_x * sum_x) / n));
-    double denominator_y = sqrt((sum_y2 - (sum_y * sum_y) / n));
+    double denominator_x = std::sqrt((sum_x2 - (sum_x * sum_x) / n));
+    double denominator_y = std::sqrt((sum_y2 - (sum_y * sum_y) / n));
     
     if (denominator_x == 0.0 || denominator_y == 0.0) {
         return 0.0;
@@ -272,8 +265,8 @@ static double normInversion(double p) {
 }
 
 std::tuple<double, double> StatisticsClass::performShapiroWilkTest(
-    const std::vector<double>& values)
-{
+    const std::vector<double>& values) {
+    
     size_t n = values.size();
     if (n < 3) {
         return { -1.0, -1.0 };
