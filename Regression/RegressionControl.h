@@ -16,9 +16,6 @@ public:
     void runMultipleRegressionSelected(const std::vector<std::string>& selectedCommodities) const;
     void displayMultipleRegressionResults(const MultipleRegressionMetrics& results,
                                         const std::vector<std::string>& predictorNames) const;
-    void calculateStandardErrors(MultipleRegressionMetrics& results,
-                                            const std::vector<std::vector<double>>& X,
-                                            const std::vector<double>& y);
     void checkMulticollinearity(const std::vector<std::vector<double>>& predictors,
                                              const std::vector<std::string>& predictorNames) const;
 private:

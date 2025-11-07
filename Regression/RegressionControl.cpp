@@ -17,16 +17,13 @@ namespace {
     const std::string RESET = "\033[0m";
 }
 
-// Enhanced Linear Algebra functions
-
-
-RegressionControl::RegressionControl(const StatisticsControl& statsController)
-    : statsController(statsController) {}
+RegressionControl::RegressionControl(const StatisticsControl& statsControl)
+    : statsController(statsControl) {}
 
 void RegressionControl::displayResults(const RegressionMetrics& results, 
-                                       const std::string& commodityLabel) const {
+                                       const std::string& typeLabel) const {
     std::cout << "\n" << GREEN << "=== REGRESSION RESULTS ===" << RESET << "\n";
-    std::cout << commodityLabel << " Price = " << std::fixed << std::setprecision(6) 
+    std::cout << typeLabel << " Price = " << std::fixed << std::setprecision(6) 
               << results.beta0 << " + " << results.beta1 << " × Gold Price\n";
     
     std::cout << "\nGoodness of Fit:\n";
@@ -50,12 +47,12 @@ void RegressionControl::displayResults(const RegressionMetrics& results,
     std::cout << "MAE: " << mae << " (Mean Absolute Error)\n";
     
     std::cout << "\n" << YELLOW << "Economic Interpretation:" << RESET << "\n";
-    std::cout << "- For every $1 increase in Gold, " << commodityLabel 
+    std::cout << "- For every $1 increase in Gold, " << typeLabel 
               << " changes by $" << std::fixed << std::setprecision(4) << results.beta1 << "\n";
-    std::cout << "- Base " << commodityLabel << " price when Gold is $0: $" 
+    std::cout << "- Base " << typeLabel << " price when Gold is $0: $" 
               << std::fixed << std::setprecision(2) << results.beta0 << "\n";
     std::cout << "- Model explains " << (results.R2 * 100) << "% of " 
-              << commodityLabel << " price variation\n";
+              << typeLabel << " price variation\n";
     std::cout << "- Average prediction error: $" << std::fixed << std::setprecision(2) 
               << mae << "\n";
 }
@@ -73,7 +70,6 @@ void RegressionControl::runCommodityRegression(const std::string& commodityName,
             return;
         }
         
-        // Align vector sizes
         size_t minSize = std::min(goldPrices.size(), otherPrices.size());
         if (minSize < 10) {
             std::cout << RED << "Error: Not enough common data points! Need at least 10, got " << minSize << RESET << std::endl;
@@ -122,7 +118,6 @@ void RegressionControl::runCopperGoldRegression() const {
     runCommodityRegression(RecordClass::COPPER, "Copper");
 }
 
-// Enhanced Multiple Regression Implementation
 
 
 
@@ -140,7 +135,6 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
     
     std::cout << CYAN << "\n=== MULTIPLE REGRESSION: Gold vs Selected Commodities ===" << RESET << std::endl;
     
-    // Display selected commodities
     std::cout << "Selected commodities: ";
     for (size_t i = 0; i < selectedCommodities.size(); ++i) {
         std::cout << statsController.getTypeName(selectedCommodities[i]);
@@ -197,7 +191,6 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
         std::cout << CYAN << "\nFinal model: " << predictors.size() << " predictors, " 
                   << goldPrices.size() << " observations" << RESET << "\n";
         
-        // Check for multicollinearity
         checkMulticollinearity(predictors, predictorNames);
         
         MultipleRegressionMetrics results = 
@@ -205,7 +198,6 @@ void RegressionControl::runMultipleRegressionSelected(const std::vector<std::str
         
         displayMultipleRegressionResults(results, predictorNames);
         
-        // Offer to compare with reduced model
         if (predictors.size() > 3) {
             std::cout << "\n" << YELLOW << "Try reduced model with only significant predictors? (y/n): " << RESET;
             char choice;
@@ -228,10 +220,8 @@ void RegressionControl::runReducedModel(const std::vector<std::vector<double>>& 
     std::vector<std::vector<double>> significantPredictors;
     std::vector<std::string> significantNames;
     
-    // Include intercept (always index 0)
-    // Check which predictors are significant (p < 0.1)
     for (size_t i = 1; i < fullResults.coefficients.size() && i - 1 < allPredictorNames.size(); ++i) {
-        if (fullResults.tpValues[i] < 0.1) { // Include marginally significant predictors too
+        if (fullResults.tpValues[i] < 0.1) { 
             significantPredictors.push_back(allPredictors[i - 1]);
             significantNames.push_back(allPredictorNames[i - 1]);
         }
@@ -257,7 +247,6 @@ void RegressionControl::runReducedModel(const std::vector<std::vector<double>>& 
     
     displayMultipleRegressionResults(reducedResults, significantNames);
     
-    // Compare with full model
     compareModels(fullResults, reducedResults, allPredictorNames.size(), significantNames.size());
 }
 
@@ -291,7 +280,6 @@ void RegressionControl::compareModels(const MultipleRegressionMetrics& fullModel
               << std::setw(15) << reducedPredictors
               << std::setw(15) << (fullPredictors - reducedPredictors) << "\n";
     
-    // Calculate RMSE for both models
     double fullRMSE = std::sqrt(fullModel.RSS / fullModel.fittedValues.size());
     double reducedRMSE = std::sqrt(reducedModel.RSS / reducedModel.fittedValues.size());
     
@@ -310,7 +298,6 @@ void RegressionControl::compareModels(const MultipleRegressionMetrics& fullModel
     }
 }
 
-// Enhanced RegressionControl methods
 void RegressionControl::runMultipleRegressionAllCommodities() const {
     std::cout << CYAN << "\n=== MULTIPLE REGRESSION: Gold vs All Commodities ===" << RESET << std::endl;
     
@@ -354,7 +341,6 @@ void RegressionControl::runMultipleRegressionAllCommodities() const {
         std::cout << CYAN << "\nFinal model: " << predictors.size() << " predictors, " 
                   << goldPrices.size() << " observations" << RESET << "\n";
         
-        // Check for multicollinearity
         checkMulticollinearity(predictors, predictorNames);
         
         MultipleRegressionMetrics results = 
@@ -392,7 +378,6 @@ void RegressionControl::displayMultipleRegressionResults(const MultipleRegressio
                                                        const std::vector<std::string>& predictorNames) const {
     RegressionClass::printMultipleRegressionResults(results, predictorNames);
     
-    // Enhanced economic interpretation
     std::cout << "\n" << YELLOW << "=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
     
     if (results.FpValue < 0.05) {
@@ -426,7 +411,6 @@ void RegressionControl::displayMultipleRegressionResults(const MultipleRegressio
         }
     }
     
-    // Calculate and display model diagnostics
     double rmse = std::sqrt(results.RSS / results.fittedValues.size());
     double mae = 0.0;
     for (double r : results.residuals) {
