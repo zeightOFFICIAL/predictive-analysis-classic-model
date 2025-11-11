@@ -77,6 +77,9 @@ void RecordControl::displayDataForDate(const std::string& date) const {
     printCommodityPrice("Copper", dataRef.getPrice(RecordClass::COPPER, date));
     printCommodityPrice("Platinum", dataRef.getPrice(RecordClass::PLATINUM, date));
     printCommodityPrice("Palladium", dataRef.getPrice(RecordClass::PALLADIUM, date));
+
+    std::cout << std::string(date.length() + 6, '-') << "\n";
+    printSanctionsStatus(date, dataRef.getSanctionsDummy(date));
 }
 
 void RecordControl::displayDataSummary() const {
@@ -174,4 +177,43 @@ std::vector<std::string> RecordControl::getAvailableDatesFormatted() const {
         formattedDates.push_back(dataRef.formatDate(date));
     }
     return formattedDates;
+}
+
+void RecordControl::printSanctionsStatus(const std::string& date, int sanctionsValue) const {
+    std::string status = (sanctionsValue == 1) ? "POST-SANCTIONS" : "PRE-SANCTIONS";
+    std::string color = (sanctionsValue == 1) ? RED : GREEN;
+    
+    std::cout << std::left << std::setw(18) << "Sanctions Status" 
+              << ": " << color << BOLD << status << RESET 
+              << " (" << sanctionsValue << ")" << "\n";
+}
+
+void RecordControl::displaySanctionsInfo() const {
+    auto sanctionsData = dataRef.getAllSanctionsDummy();
+    if (sanctionsData.empty()) {
+        std::cout << RED << "No sanctions data available!" << RESET << "\n";
+        return;
+    }
+
+    printHeader("SANCTIONS DUMMY VARIABLE SUMMARY");
+    
+    int preSanctions = 0, postSanctions = 0;
+    for (const auto& [date, value] : sanctionsData) {
+        if (value == 0) preSanctions++;
+        else if (value == 1) postSanctions++;
+    }
+    
+    std::cout << "Pre-Sanctions (2000-2021): " << BOLD << GREEN 
+              << preSanctions << RESET << " records\n";
+    std::cout << "Post-Sanctions (2022-2025): " << BOLD << RED 
+              << postSanctions << RESET << " records\n";
+    std::cout << "Total records: " << BOLD 
+              << (preSanctions + postSanctions) << RESET << "\n";
+    
+    double prePercentage = (preSanctions * 100.0) / sanctionsData.size();
+    double postPercentage = (postSanctions * 100.0) / sanctionsData.size();
+    
+    std::cout << "Distribution: " << GREEN << "Pre " << std::fixed << std::setprecision(1) 
+              << prePercentage << "%" << RESET << " | " << RED << "Post " 
+              << postPercentage << "%" << RESET << "\n";
 }

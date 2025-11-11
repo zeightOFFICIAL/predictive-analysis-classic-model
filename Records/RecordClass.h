@@ -18,6 +18,7 @@ public:
     static const std::string COPPER;
     static const std::string PLATINUM;
     static const std::string PALLADIUM;
+    static const std::string SANCTIONS_DUMMY;
 
     bool loadFromCSV(const std::string& filename);
     float getPrice(const std::string& commodity, const std::string& date) const;
@@ -29,12 +30,17 @@ public:
     time_t getEarliestDate() const;
     time_t getLatestDate() const;
     std::string formatDate(time_t date) const;
+    int getSanctionsDummy(const std::string& date) const;
+    int getSanctionsDummy(time_t date) const;
+    std::map<time_t, int> getAllSanctionsDummy() const;
 
 private:
     std::map<std::string, std::map<time_t, float>> priceData;
     std::vector<time_t> dates;
 
     time_t parseDate(const std::string& dateStr) const;
+
+    std::map<time_t, int> sanctionsData;
 };
 
 #endif

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <iostream>
 
 const std::string RecordClass::WTI_OIL = "CL=F_closing_price";
 const std::string RecordClass::GOLD = "GC=F_closing_price";
@@ -14,6 +15,7 @@ const std::string RecordClass::SOYBEAN = "ZS=F_closing_price";
 const std::string RecordClass::COPPER = "HG=F_closing_price";
 const std::string RecordClass::PLATINUM = "PL=F_closing_price";
 const std::string RecordClass::PALLADIUM = "PA=F_closing_price";
+const std::string RecordClass::SANCTIONS_DUMMY = "sanctions_dummy";
 
 bool RecordClass::loadFromCSV(const std::string& filename) {
     std::ifstream file(filename);
@@ -49,7 +51,12 @@ bool RecordClass::loadFromCSV(const std::string& filename) {
             
             try {
                 float price = std::stof(priceStr);
-                priceData[commodities[i]][date] = price;
+                if (i == commodities.size() - 1){
+                    sanctionsData[date] = price;
+                } 
+                else {
+                    priceData[commodities[i]][date] = price;
+                }
             } catch (...) {
                 continue;
             }
@@ -136,4 +143,20 @@ time_t RecordClass::parseDate(const std::string& dateStr) const {
     
     time_t time = std::mktime(&tm);
     return (time == -1) ? -1 : time;
+}
+
+int RecordClass::getSanctionsDummy(const std::string& date) const {
+    time_t dateTime = parseDate(date);
+    if (dateTime == -1) return -1;
+    return getSanctionsDummy(dateTime);
+}
+
+int RecordClass::getSanctionsDummy(time_t date) const {
+    auto it = sanctionsData.find(date);
+    if (it == sanctionsData.end()) return -1;
+    return it->second;
+}
+
+std::map<time_t, int> RecordClass::getAllSanctionsDummy() const {
+    return sanctionsData;
 }

@@ -45,6 +45,8 @@ static void displayMenu() {
     std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
     std::cout << "17. Generate histograms for all commodities\n";
     std::cout << "18. Generate boxplots for all commodities\n";
+    std::cout << "\n" << CYAN_COLOR << "========= FICTIVE PARAMETER =========" << RESET << "\n";
+    std::cout << "19. Show fictive parameter details\n";
     std::cout << "\n0. Exit program\n";
     std::cout << "Enter your choice (0-14): ";
 }
@@ -116,10 +118,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    RecordControl recordController(data);
+    RecordControl recordControl(data);
     StatisticsClass stats(data);
-    StatisticsControl statsController(stats);
-    RegressionControl regController(statsController);
+    StatisticsControl statsControl(stats);
+    RegressionControl regControl(statsControl);
 
     const std::vector<std::string> significantPredictors_set1 = {"NG=F_closing_price"};
     const std::vector<std::string> significantPredictors_set2 = {"ZS=F_closing_price", "ZC=F_closing_price", "ZW=F_closing_price"};
@@ -142,87 +144,91 @@ int main(int argc, char* argv[]) {
 
         switch (choice) {
             case 1: { 
-                auto dates = recordController.getAvailableDatesFormatted();
+                auto dates = recordControl.getAvailableDatesFormatted();
                 if (dates.empty()) {
                     std::cout << RED_COLOR << "No market data available!\n" << RESET;
                     break;
                 }
                 std::cout << "Enter trading date (e.g. " << dates.front() << "): ";
                 std::getline(std::cin, input);
-                recordController.displayDataForDate(input);
+                recordControl.displayDataForDate(input);
                 break;
             }
 
             case 2:
-                recordController.displayDataSummary();
+                recordControl.displayDataSummary();
                 break;
 
             case 3:
-                statsController.showFullReport();
+                statsControl.showFullReport();
                 break;
 
             case 4:
-                statsController.showComparativeAnalysis();
+                statsControl.showComparativeAnalysis();
                 break;
 
             case 5:
-                statsController.showGoldCorrelations();
+                statsControl.showGoldCorrelations();
                 break;
 
             case 6:
                 std::cout << CYAN_COLOR << "\nGenerating scatter plots..." << RESET;
-                statsController.generateScatterPlotsWithGNUplot();
+                statsControl.generateScatterPlotsWithGNUplot();
                 break;
 
             case 8:
-                regController.runSilverGoldRegression();
+                regControl.runSilverGoldRegression();
                 break;
 
             case 9:
-                regController.runCopperGoldRegression();
+                regControl.runCopperGoldRegression();
                 break;
 
             case 10:
-                runCustomRegression(statsController, regController);
+                runCustomRegression(statsControl, regControl);
                 break;
 
             case 11:
-                regController.runMultipleRegressionAllCommodities();
+                regControl.runMultipleRegressionAllCommodities();
                 break;
 
             case 12:
-                regController.runMultipleRegressionSelected(significantPredictors_set1);
+                regControl.runMultipleRegressionSelected(significantPredictors_set1);
                 break;
             
             case 13:
-                regController.runMultipleRegressionSelected(significantPredictors_set2);
+                regControl.runMultipleRegressionSelected(significantPredictors_set2);
             break;
 
             case 14:
-                regController.runMultipleRegressionSelected(significantPredictors_set3);
+                regControl.runMultipleRegressionSelected(significantPredictors_set3);
             break;
 
             case 15:
-                regController.runMultipleRegressionSelected(significantPredictors_set4);
+                regControl.runMultipleRegressionSelected(significantPredictors_set4);
             break;
 
             case 16:
-                regController.runMultipleRegressionSelected(significantPredictors_set5);
+                regControl.runMultipleRegressionSelected(significantPredictors_set5);
             break;
 
             case 17:
                 std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
-                statsController.generateHistograms();
+                statsControl.generateHistograms();
                 break;
 
             case 18:
                 std::cout << CYAN_COLOR << "\nGenerating boxplots..." << RESET << "\n";
-                statsController.generateBoxplots();
+                statsControl.generateBoxplots();
+                break;
+
+            case 19:
+                recordControl.displaySanctionsInfo();
                 break;
 
             case 7:
                 std::cout << CYAN_COLOR << "\nGenerating correlation matrix..." << RESET << "\n";
-                statsController.generateCorrelationMatrix();
+                statsControl.generateCorrelationMatrix();
                 break;
 
             case 0:
