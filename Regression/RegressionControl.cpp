@@ -564,18 +564,18 @@ void RegressionControl::runMultipleRegressionWithDummy(
 
          
         std::cout << CYAN << "\n=== COMPARISON SUMMARY ===" << RESET << "\n";
-        std::cout << "ΔR² = " << std::fixed << std::setprecision(6)
+        std::cout << "Delta R sql = " << std::fixed << std::setprecision(6)
                   << (modelWithDummy.R2 - modelWithoutDummy.R2)
-                  << ", ΔAdj.R² = " << (modelWithDummy.adjustedR2 - modelWithoutDummy.adjustedR2)
+                  << ", Delta Adj.R sqr = " << (modelWithDummy.adjustedR2 - modelWithoutDummy.adjustedR2)
                   << ", F(" << (p_full - p_reduced) << "," << (n - p_full) << ") = "
                   << fTest.Fstatistic << "\n";
 
          
         std::cout << YELLOW << "\n=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
         if (fTest.significant || waldTest.significant) {
-            std::cout << GREEN << "✓ Sanctions period significantly altered gold price dynamics\n" << RESET;
+            std::cout << GREEN << "Sanctions period significantly altered gold price dynamics\n" << RESET;
         } else {
-            std::cout << YELLOW << "∼ Sanctions period not statistically significant\n" << RESET;
+            std::cout << YELLOW << "Sanctions period not statistically significant\n" << RESET;
         }
 
     } catch (const std::exception& e) {

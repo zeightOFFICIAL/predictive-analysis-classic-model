@@ -965,9 +965,9 @@ void RegressionClass::printWaldTestResults(const WaldTest& waldTest) {
     std::cout << "Significant at 5% level: " << (waldTest.significant ? "YES" : "NO") << "\n";
     
     if (waldTest.significant) {
-        std::cout << "✓ Reject null hypothesis - coefficients are statistically significant\n";
+        std::cout << "Reject null hypothesis - coefficients are statistically significant\n";
     } else {
-        std::cout << "∼ Fail to reject null hypothesis - coefficients are not statistically significant\n";
+        std::cout << "Fail to reject null hypothesis - coefficients are not statistically significant\n";
     }
     
      
