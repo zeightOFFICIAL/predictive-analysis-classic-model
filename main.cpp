@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
     const std::vector<std::string> significantPredictors_set4 = {"SI=F_closing_price", "NG=F_closing_price", "HG=F_closing_price", "ZS=F_closing_price"};
     const std::vector<std::string> significantPredictors_set5 = {"NG=F_closing_price", "HG=F_closing_price"};
     const std::vector<std::string> significantPredictors_set0 = {"CL=F_closing_price", "GC=F_closing_price", "SI=F_closing_price", "NG=F_closing_price", "ZC=F_closing_price", "ZW=F_closing_price", "ZS=F_closing_price", "HG=F_closing_price", "PL=F_closing_price", "PA=F_closing_price"};
-
+    
     int choice = 0;
     std::string input;
 

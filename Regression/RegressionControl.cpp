@@ -564,7 +564,7 @@ void RegressionControl::runMultipleRegressionWithDummy(
 
          
         std::cout << CYAN << "\n=== COMPARISON SUMMARY ===" << RESET << "\n";
-        std::cout << "Delta R sql = " << std::fixed << std::setprecision(6)
+        std::cout << "Delta R sqr = " << std::fixed << std::setprecision(6)
                   << (modelWithDummy.R2 - modelWithoutDummy.R2)
                   << ", Delta Adj.R sqr = " << (modelWithDummy.adjustedR2 - modelWithoutDummy.adjustedR2)
                   << ", F(" << (p_full - p_reduced) << "," << (n - p_full) << ") = "

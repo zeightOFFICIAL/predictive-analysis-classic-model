@@ -782,14 +782,13 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
     std::cout << "\n" << "=== DUMMY VARIABLE SIGNIFICANCE TEST ===" << "\n";
     std::cout << "F-statistic for dummy variable: " << std::fixed << std::setprecision(4) 
               << hypothesisTest.Fstatistic << "\n";
-    std::cout << "p-value: " << hypothesisTest.pValue << "\n";
     std::cout << "Significant at 5% level: " << (hypothesisTest.significant ? "YES" : "NO") << "\n";
     
     if (hypothesisTest.significant) {
-        std::cout  << "✓ The dummy variable (sanctions) significantly improves the model\n";
+        std::cout  << "The dummy variable (sanctions) significantly improves the model\n";
         std::cout << "This suggests structural change in gold price relationships after 2022\n";
     } else {
-        std::cout  << "∼ The dummy variable does not significantly improve the model\n";
+        std::cout  << "The dummy variable does not significantly improve the model\n";
         std::cout << "Gold price relationships remained stable across both periods\n";
     }
     
@@ -960,8 +959,6 @@ void RegressionClass::printWaldTestResults(const WaldTest& waldTest) {
     std::cout << "Chi-square statistic: " << std::fixed << std::setprecision(4) 
               << waldTest.chi2Statistic << "\n";
     std::cout << "Degrees of freedom: " << waldTest.testedIndices.size() << "\n";
-    std::cout << "p-value: " << std::scientific << waldTest.pValue 
-              << std::fixed << " (" << waldTest.pValue << ")\n";
     std::cout << "Significant at 5% level: " << (waldTest.significant ? "YES" : "NO") << "\n";
     
     if (waldTest.significant) {
