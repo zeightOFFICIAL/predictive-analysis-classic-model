@@ -158,7 +158,7 @@ namespace LinearAlgebra {
         return beta;
     }
 
-} // namespace LinearAlgebra
+}  
 
 RegressionMetrics RegressionClass::calculateRegression(const std::vector<double>& X, const std::vector<double>& Y) {
     RegressionMetrics results;
@@ -582,7 +582,7 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegressionWithDummy(
     size_t n = response.size();
     size_t p = predictors.size();
     
-    // Проверка размеров
+     
     for (const auto& predictor : predictors) {
         if (predictor.size() != n) {
             return results;
@@ -592,55 +592,55 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegressionWithDummy(
         return results;
     }
     
-    // Создаем матрицу предикторов с фиктивной переменной
+     
     std::vector<std::vector<double>> extendedPredictors;
     
     if (multiplicative) {
-        // Мультипликативная модель: добавляем dummy и взаимодействия со всеми предикторами
+         
         extendedPredictors.resize(n, std::vector<double>(2 * p + 1));
         
         for (size_t i = 0; i < n; ++i) {
-            // Константа
+             
             extendedPredictors[i][0] = 1.0;
             
-            // Основные предикторы
+             
             for (size_t j = 0; j < p; ++j) {
                 extendedPredictors[i][j + 1] = predictors[j][i];
             }
             
-            // Фиктивная переменная
+             
             extendedPredictors[i][p + 1] = static_cast<double>(dummyVariable[i]);
             
-            // Взаимодействия с фиктивной переменной
+             
             for (size_t j = 0; j < p; ++j) {
                 extendedPredictors[i][p + 2 + j] = predictors[j][i] * dummyVariable[i];
             }
         }
     } else {
-        // Аддитивная модель: просто добавляем dummy переменную
+         
         extendedPredictors.resize(n, std::vector<double>(p + 2));
         
         for (size_t i = 0; i < n; ++i) {
-            // Константа
+             
             extendedPredictors[i][0] = 1.0;
             
-            // Основные предикторы
+             
             for (size_t j = 0; j < p; ++j) {
                 extendedPredictors[i][j + 1] = predictors[j][i];
             }
             
-            // Фиктивная переменная
+             
             extendedPredictors[i][p + 1] = static_cast<double>(dummyVariable[i]);
         }
     }
     
-    // Масштабирование предикторов
+     
     std::vector<std::vector<double>> scaledPredictors = extendedPredictors;
     size_t total_p = extendedPredictors[0].size();
     std::vector<double> means(total_p, 0.0);
     std::vector<double> stddevs(total_p, 1.0);
     
-    // Не масштабируем константу и фиктивную переменную
+     
     for (size_t j = 1; j < total_p; ++j) {
         double mean = 0.0;
         for (size_t i = 0; i < n; ++i) {
@@ -661,13 +661,13 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegressionWithDummy(
         }
     }
     
-    // Решаем OLS
+     
     results.coefficients = LinearAlgebra::solveOLS(scaledPredictors, response, 0.1);
     if (results.coefficients.empty()) {
         return results;
     }
     
-    // Обратное масштабирование коэффициентов
+     
     for (size_t j = 1; j < total_p; ++j) {
         if (stddevs[j] > 1e-10) {
             results.coefficients[j] /= stddevs[j];
@@ -675,7 +675,7 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegressionWithDummy(
         }
     }
     
-    // Расчет fitted values и остатков
+     
     results.fittedValues.resize(n);
     results.residuals.resize(n);
     
@@ -759,13 +759,13 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
         std::string sign = (results.coefficients[i] >= 0) ? " + " : " - ";
         
         if (i <= predictorNames.size()) {
-            // Основные предикторы
+             
             std::cout << sign << std::abs(results.coefficients[i]) << " x " << predictorNames[i - 1];
         } else if (i == predictorNames.size() + 1) {
-            // Фиктивная переменная
+             
             std::cout << sign << std::abs(results.coefficients[i]) << " x Sanctions_Dummy";
         } else {
-            // Взаимодействия
+             
             size_t interaction_idx = i - predictorNames.size() - 2;
             std::cout << sign << std::abs(results.coefficients[i]) << " x " 
                       << predictorNames[interaction_idx] << "_x_Sanctions";
@@ -803,7 +803,7 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
     
     std::cout << std::string(74, '-') << "\n";
     
-    // Intercept
+     
     std::string sig = getSignificanceStars(results.tpValues[0]);
     std::cout << std::left << std::setw(25) << "Intercept"
               << std::fixed << std::setprecision(6) << std::setw(15) << results.coefficients[0]
@@ -812,7 +812,7 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
               << std::setw(12) << results.tpValues[0]
               << sig << "\n";
     
-    // Основные предикторы
+     
     for (size_t i = 1; i <= predictorNames.size(); ++i) {
         sig = getSignificanceStars(results.tpValues[i]);
         std::cout << std::left << std::setw(25) << predictorNames[i - 1]
@@ -823,7 +823,7 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
                   << sig << "\n";
     }
     
-    // Фиктивная переменная
+     
     if (predictorNames.size() + 1 < results.coefficients.size()) {
         size_t dummy_idx = predictorNames.size() + 1;
         sig = getSignificanceStars(results.tpValues[dummy_idx]);
@@ -835,7 +835,7 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
                   << sig << "\n";
     }
     
-    // Взаимодействия (для мультипликативной модели)
+     
     for (size_t i = predictorNames.size() + 2; i < results.coefficients.size(); ++i) {
         size_t interaction_idx = i - predictorNames.size() - 2;
         std::string interaction_name = predictorNames[interaction_idx] + "_x_Sanctions";
@@ -865,7 +865,7 @@ WaldTest RegressionClass::performWaldTest(
     size_t k = coefficientIndices.size();
     std::vector<double> h0_values(k, 0.0);
     
-    // Если заданы гипотетические значения, используем их, иначе тестируем на равенство нулю
+     
     if (!hypothesizedValues.empty() && hypothesizedValues.size() == k) {
         h0_values = hypothesizedValues;
         test.hypothesis = "H0: coefficients = [";
@@ -878,7 +878,7 @@ WaldTest RegressionClass::performWaldTest(
         test.hypothesis = "H0: coefficients = 0";
     }
     
-    // Вычисляем статистику Вальда
+     
     test.chi2Statistic = 0.0;
     
     for (size_t i = 0; i < k; ++i) {
@@ -894,10 +894,10 @@ WaldTest RegressionClass::performWaldTest(
         }
     }
     
-    // Вычисляем p-value (распределение хи-квадрат с k степенями свободы)
+     
     if (k > 0) {
-        // Используем F-распределение для вычисления p-value для хи-квадрат
-        test.pValue = calculatePValue(test.chi2Statistic, k, 1000000); // Большие степени свободы для аппроксимации хи-квадрат
+         
+        test.pValue = calculatePValue(test.chi2Statistic, k, 1000000);  
         test.significant = (test.pValue < 0.05);
     }
     
@@ -918,23 +918,23 @@ WaldTest RegressionClass::performWaldTestForDummy(
     std::vector<int> indicesToTest;
     
     if (multiplicative) {
-        // Для мультипликативной модели тестируем все коэффициенты, связанные с dummy
-        // Фиктивная переменная и все взаимодействия
+         
+         
         size_t p = predictorNames.size();
         
-        // Индекс фиктивной переменной
+         
         if (p + 1 < modelWithDummy.coefficients.size()) {
             indicesToTest.push_back(p + 1);
         }
         
-        // Индексы взаимодействий
+         
         for (size_t i = p + 2; i < modelWithDummy.coefficients.size(); ++i) {
             indicesToTest.push_back(i);
         }
         
         test.hypothesis = "H0: All sanctions-related coefficients (dummy + interactions) = 0";
     } else {
-        // Для аддитивной модели тестируем только фиктивную переменную
+         
         size_t p = predictorNames.size();
         
         if (p + 1 < modelWithDummy.coefficients.size()) {
@@ -970,7 +970,7 @@ void RegressionClass::printWaldTestResults(const WaldTest& waldTest) {
         std::cout << "∼ Fail to reject null hypothesis - coefficients are not statistically significant\n";
     }
     
-    // Критические значения хи-квадрат распределения
+     
     std::cout << "\nCritical values for chi-square distribution (df=" 
               << waldTest.testedIndices.size() << "):\n";
     std::cout << "90% level: " << std::setprecision(3);

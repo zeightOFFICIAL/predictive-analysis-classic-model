@@ -418,7 +418,7 @@ std::vector<int> RegressionControl::getSanctionsDummyVariable(size_t n) const {
             }
         }
 
-        // Safety resize to match n (goldPrices.size())
+         
         if (dummy.size() > n) dummy.resize(n);
         else if (dummy.size() < n) dummy.insert(dummy.end(), n - dummy.size(), dummy.back());
 
@@ -458,14 +458,14 @@ void RegressionControl::runMultipleRegressionWithDummy(
             return;
         }
 
-        // --- Create dummy variable safely ---
+         
         auto dummyVariable = getSanctionsDummyVariable(n);
         if (dummyVariable.size() != n) {
             std::cout << RED << "Error: Dummy variable size mismatch!\n" << RESET;
             return;
         }
 
-        // --- Build predictors ---
+         
         std::vector<std::string> predictorNames;
         std::vector<std::vector<double>> predictors;
 
@@ -473,7 +473,7 @@ void RegressionControl::runMultipleRegressionWithDummy(
             if (commodity == RecordClass::GOLD) continue;
             auto prices = statsControl.getTypePrices(commodity);
 
-            // Resize or reject inconsistent predictors
+             
             if (prices.size() > n) prices.resize(n);
             if (prices.size() < n) {
                 std::cout << YELLOW << "Warning: Skipping " 
@@ -500,18 +500,18 @@ void RegressionControl::runMultipleRegressionWithDummy(
                   << " predictors + sanctions dummy, "
                   << n << " observations" << RESET << "\n";
 
-        // --- Check collinearity ---
+         
         checkMulticollinearity(predictors, predictorNames);
 
-        // --- Reduced model (without dummy) ---
+         
         MultipleRegressionMetrics modelWithoutDummy =
             RegressionClass::calculateMultipleRegression(predictors, goldPrices);
 
-        // --- Full model (with dummy variable) ---
-        // Defensive duplication for multiplicative case
+         
+         
         MultipleRegressionMetrics modelWithDummy;
         if (multiplicative) {
-            // Create interaction terms explicitly and safely
+             
             std::vector<std::vector<double>> extendedPredictors = predictors;
             for (const auto& pred : predictors) {
                 std::vector<double> interaction(n);
@@ -520,7 +520,7 @@ void RegressionControl::runMultipleRegressionWithDummy(
                 }
                 extendedPredictors.push_back(interaction);
             }
-            // Add dummy itself
+             
             std::vector<double> dummyAsDouble(n);
             std::transform(dummyVariable.begin(), dummyVariable.end(), dummyAsDouble.begin(),
                            [](int d) { return static_cast<double>(d); });
@@ -529,7 +529,7 @@ void RegressionControl::runMultipleRegressionWithDummy(
             modelWithDummy = RegressionClass::calculateMultipleRegression(
                 extendedPredictors, goldPrices);
         } else {
-            // Add dummy as an additional independent variable
+             
             std::vector<std::vector<double>> extendedPredictors = predictors;
             std::vector<double> dummyAsDouble(n);
             std::transform(dummyVariable.begin(), dummyVariable.end(), dummyAsDouble.begin(),
@@ -540,14 +540,14 @@ void RegressionControl::runMultipleRegressionWithDummy(
                 extendedPredictors, goldPrices);
         }
 
-        // --- Dimension safety checks ---
+         
         if (modelWithDummy.fittedValues.size() != n ||
             modelWithoutDummy.fittedValues.size() != n) {
             std::cout << RED << "Error: Regression output dimension mismatch!\n" << RESET;
             return;
         }
 
-        // --- Compute test parameters ---
+         
         const int p_reduced = static_cast<int>(predictors.size()) + 1;
         const int p_full = multiplicative
             ? static_cast<int>(2 * predictors.size() + 2)
@@ -562,7 +562,7 @@ void RegressionControl::runMultipleRegressionWithDummy(
         RegressionClass::printDummyVariableResults(modelWithDummy, predictorNames, fTest);
         RegressionClass::printWaldTestResults(waldTest);
 
-        // --- Comparison summary ---
+         
         std::cout << CYAN << "\n=== COMPARISON SUMMARY ===" << RESET << "\n";
         std::cout << "ΔR² = " << std::fixed << std::setprecision(6)
                   << (modelWithDummy.R2 - modelWithoutDummy.R2)
@@ -570,7 +570,7 @@ void RegressionControl::runMultipleRegressionWithDummy(
                   << ", F(" << (p_full - p_reduced) << "," << (n - p_full) << ") = "
                   << fTest.Fstatistic << "\n";
 
-        // --- Interpretation ---
+         
         std::cout << YELLOW << "\n=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
         if (fTest.significant || waldTest.significant) {
             std::cout << GREEN << "✓ Sanctions period significantly altered gold price dynamics\n" << RESET;
@@ -595,7 +595,7 @@ void RegressionControl::runDummyVariableAnalysis() const {
             return;
         }
         
-        // Получаем все доступные товары (кроме золота)
+         
         auto allTypes = statsControl.getAvailableTypes();
         std::vector<std::string> availableCommodities;
         
@@ -613,13 +613,13 @@ void RegressionControl::runDummyVariableAnalysis() const {
             return;
         }
         
-        // Показываем доступные товары для выбора
+         
         std::cout << "\nAvailable commodities for regression:\n";
         for (size_t i = 0; i < availableCommodities.size(); ++i) {
             std::cout << "  " << (i + 1) << ". " << statsControl.getTypeName(availableCommodities[i]) << "\n";
         }
         
-        // Выбор товаров пользователем
+         
         std::vector<std::string> selectedCommodities;
         std::cout << "\nSelect commodities for regression (enter numbers separated by spaces, 0 for all): ";
         
@@ -636,11 +636,11 @@ void RegressionControl::runDummyVariableAnalysis() const {
         }
         
         if (choices.empty() || (choices.size() == 1 && choices[0] == 0)) {
-            // Выбрать все
+             
             selectedCommodities = availableCommodities;
             std::cout << "Selected all " << availableCommodities.size() << " commodities\n";
         } else {
-            // Выбрать указанные
+             
             for (int ch : choices) {
                 if (ch > 0 && ch <= static_cast<int>(availableCommodities.size())) {
                     selectedCommodities.push_back(availableCommodities[ch - 1]);
@@ -654,7 +654,7 @@ void RegressionControl::runDummyVariableAnalysis() const {
             return;
         }
         
-        // Выбор типа модели
+         
         std::cout << "\nSelect model type:\n";
         std::cout << "1. Additive model (dummy as separate predictor)\n";
         std::cout << "2. Multiplicative model (dummy + interactions)\n";

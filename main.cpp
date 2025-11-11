@@ -49,12 +49,23 @@ static void displayMenu() {
     std::cout << "17. Generate histograms for all commodities\n";
     std::cout << "18. Generate boxplots for all commodities\n";
     
-    std::cout << "\n" << CYAN_COLOR << "========= FICTIVE PARAMETER =========" << RESET << "\n";
+    std::cout << "\n" << YELLOW_COLOR << "========= FICTIVE PARAMETER =========" << RESET << "\n";
     std::cout << "19. Show fictive parameter details\n";
-    std::cout << "20. Run multi-regression analysis (all predictors+fictive)\n";
+    std::cout << "20. Run multi-regression analysis (all predictors + fictive) ADDITIVE\n";
+    std::cout << "21. Run multi-regression analysis (LNG only + fictive) ADDITIVE\n";
+    std::cout << "22. Run multi-regression analysis (plants + fictive) ADDITIVE\n";
+    std::cout << "23. Run multi-regression analysis (metals + fictive) ADDITIVE\n";
+    std::cout << "24. Run multi-regression analysis (significant predictors++ + fictive) ADDITIVE\n";
+    std::cout << "25. Run multi-regression analysis (significant predictors, two most + fictive) ADDITIVE\n";
+    std::cout << "26. Run multi-regression analysis (all predictors + fictive) MULT\n";
+    std::cout << "27. Run multi-regression analysis (LNG only + fictive) MULT\n";
+    std::cout << "28. Run multi-regression analysis (plants + fictive) MULT\n";
+    std::cout << "29. Run multi-regression analysis (metals + fictive) MULT\n";
+    std::cout << "30. Run multi-regression analysis (significant predictors++ + fictive) MULT\n";
+    std::cout << "31. Run multi-regression analysis (significant predictors, two most + fictive) MULT\n";
     
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-23): ";
+    std::cout << "Enter your choice (0-31): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -125,12 +136,13 @@ int main(int argc, char* argv[]) {
     StatisticsControl statsControl(stats);
     RegressionControl regControl(statsControl);
 
-    // Define predictor sets for different regression scenarios
+     
     const std::vector<std::string> significantPredictors_set1 = {"NG=F_closing_price"};
     const std::vector<std::string> significantPredictors_set2 = {"ZS=F_closing_price", "ZC=F_closing_price", "ZW=F_closing_price"};
     const std::vector<std::string> significantPredictors_set3 = {"SI=F_closing_price", "HG=F_closing_price", "PA=F_closing_price", "PL=F_closing_price"};
     const std::vector<std::string> significantPredictors_set4 = {"SI=F_closing_price", "NG=F_closing_price", "HG=F_closing_price", "ZS=F_closing_price"};
     const std::vector<std::string> significantPredictors_set5 = {"NG=F_closing_price", "HG=F_closing_price"};
+    const std::vector<std::string> significantPredictors_set0 = {"CL=F_closing_price", "GC=F_closing_price", "SI=F_closing_price", "NG=F_closing_price", "ZC=F_closing_price", "ZW=F_closing_price", "ZS=F_closing_price", "HG=F_closing_price", "PL=F_closing_price", "PA=F_closing_price"};
 
     int choice = 0;
     std::string input;
@@ -146,7 +158,7 @@ int main(int argc, char* argv[]) {
         std::cin.ignore();
 
         switch (choice) {
-            // Basic data operations
+             
             case 1: { 
                 auto dates = recordControl.getAvailableDatesFormatted();
                 if (dates.empty()) {
@@ -171,7 +183,7 @@ int main(int argc, char* argv[]) {
                 statsControl.showComparativeAnalysis();
                 break;
 
-            // Correlation analysis
+             
             case 5:
                 statsControl.showGoldCorrelations();
                 break;
@@ -186,7 +198,7 @@ int main(int argc, char* argv[]) {
                 statsControl.generateCorrelationMatrix();
                 break;
 
-            // Regression analysis
+             
             case 8:
                 regControl.runSilverGoldRegression();
                 break;
@@ -223,7 +235,7 @@ int main(int argc, char* argv[]) {
                 regControl.runMultipleRegressionSelected(significantPredictors_set5);
                 break;
 
-            // Distribution plots
+             
             case 17:
                 std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
                 statsControl.generateHistograms();
@@ -234,13 +246,57 @@ int main(int argc, char* argv[]) {
                 statsControl.generateBoxplots();
                 break;
 
-            // Fictive parameter
+             
             case 19:
                 recordControl.displaySanctionsInfo();
                 break;
 
             case 20:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set0, false);
+                break;
+
+            case 21:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set1, false);
+                break;
+            
+            case 22:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set2, false);
+                break;
+            
+            case 23:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set3, false);
+                break;
+            
+            case 24:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set4, false);
+                break;
+            
+            case 25:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set5, false);
+                break;
+
+            case 26:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set0, true);
+                break;
+
+            case 27:
                 regControl.runMultipleRegressionWithDummy(significantPredictors_set1, true);
+                break;
+            
+            case 28:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set2, true);
+                break;
+            
+            case 29:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set3, true);
+                break;
+            
+            case 30:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set4, true);
+                break;
+            
+            case 31:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set5, true);
                 break;
 
             case 0:
