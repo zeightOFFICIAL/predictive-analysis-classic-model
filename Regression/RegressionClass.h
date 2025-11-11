@@ -29,6 +29,16 @@ struct MultipleRegressionMetrics {
     double ESS;
 };
 
+struct HypothesisTest {
+    double Fstatistic;
+    double pValue;
+    double RSS_full;
+    double RSS_reduced;
+    int df_full;
+    int df_reduced;
+    bool significant;
+};
+
 class RegressionClass {
 public:
     static RegressionMetrics calculateRegression(const std::vector<double>& X, const std::vector<double>& Y);
@@ -54,4 +64,19 @@ public:
                                             const std::vector<std::vector<double>>& X,
                                             const std::vector<double>& y);
     static double calculatePValue(double statistic, int df1, int df2);
+
+    static MultipleRegressionMetrics calculateMultipleRegressionWithDummy(
+        const std::vector<std::vector<double>>& predictors,
+        const std::vector<double>& response,
+        const std::vector<int>& dummyVariable,
+        bool multiplicative = false);
+    
+    static HypothesisTest testDummyVariableSignificance(
+        const MultipleRegressionMetrics& modelWithDummy,
+        const MultipleRegressionMetrics& modelWithoutDummy,
+        int n, int p_full, int p_reduced);
+    
+    static void printDummyVariableResults(const MultipleRegressionMetrics& results,
+                                        const std::vector<std::string>& predictorNames,
+                                        const HypothesisTest& hypothesisTest);
 };

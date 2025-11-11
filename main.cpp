@@ -47,6 +47,7 @@ static void displayMenu() {
     std::cout << "18. Generate boxplots for all commodities\n";
     std::cout << "\n" << CYAN_COLOR << "========= FICTIVE PARAMETER =========" << RESET << "\n";
     std::cout << "19. Show fictive parameter details\n";
+    std::cout << "20. Run multi-regression analysis (all predictors+fictive)\n";
     std::cout << "\n0. Exit program\n";
     std::cout << "Enter your choice (0-14): ";
 }
@@ -224,6 +225,10 @@ int main(int argc, char* argv[]) {
 
             case 19:
                 recordControl.displaySanctionsInfo();
+                break;
+
+            case 20:
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set2);
                 break;
 
             case 7:

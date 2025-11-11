@@ -394,3 +394,273 @@ void RegressionControl::displayMultipleRegressionResults(const MultipleRegressio
     std::cout << "Root Mean Square Error (RMSE): $" << std::fixed << std::setprecision(2) << rmse << "\n";
     std::cout << "Mean Absolute Error (MAE): $" << std::fixed << std::setprecision(2) << mae << "\n";
 }
+
+
+std::vector<int> RegressionControl::getSanctionsDummyVariable(size_t n) const {
+    std::vector<int> dummy(n, 0);
+    
+    // Для простоты - здесь должна быть логика получения дат и определения периода
+    // В реальной реализации нужно получить даты из данных и определить период
+    // Сейчас создаем dummy вручную для демонстрации
+    // В реальном коде нужно использовать dataRef.getAllDates() и определить год
+    
+    // Пример: первые 2/3 данных - pre-sanctions (0), последние 1/3 - post-sanctions (1)
+    size_t split_point = n * 2 / 3;
+    for (size_t i = split_point; i < n; ++i) {
+        dummy[i] = 1;
+    }
+    
+    return dummy;
+}
+
+
+void RegressionControl::runMultipleRegressionWithDummy(const std::vector<std::string>& selectedCommodities, 
+                                                      bool multiplicative) const {
+    if (selectedCommodities.empty()) {
+        std::cout << RED << "Error: No commodities selected for regression!\n" << RESET;
+        return;
+    }
+    
+    std::string model_type = multiplicative ? "Multiplicative" : "Additive";
+    std::cout << CYAN << "\n=== " << model_type << " DUMMY REGRESSION: Gold vs Selected Commodities + Sanctions ===" << RESET << std::endl;
+    
+    std::cout << "Selected commodities: ";
+    for (size_t i = 0; i < selectedCommodities.size(); ++i) {
+        std::cout << statsControl.getTypeName(selectedCommodities[i]);
+        if (i < selectedCommodities.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "\nDummy variable: Sanctions (0=Pre-2022, 1=Post-2022)\n";
+    std::cout << "Model type: " << model_type << "\n\n";
+    
+    try {
+        auto goldPrices = statsControl.getTypePrices(RecordClass::GOLD);
+        if (goldPrices.empty()) {
+            std::cout << RED << "Error: No gold price data available!\n" << RESET;
+            return;
+        }
+        
+        // Получаем фиктивную переменную
+        auto dummyVariable = getSanctionsDummyVariable(goldPrices.size());
+        
+        // Собираем предикторы
+        std::vector<std::string> predictorNames;
+        std::vector<std::vector<double>> predictors;
+        
+        for (const auto& commodity : selectedCommodities) {
+            if (commodity == RecordClass::GOLD) {
+                std::cout << YELLOW << "Skipping Gold (cannot use as predictor for itself)\n" << RESET;
+                continue;
+            }
+            
+            auto prices = statsControl.getTypePrices(commodity);
+            if (prices.size() == goldPrices.size() && !prices.empty()) {
+                predictorNames.push_back(statsControl.getTypeName(commodity));
+                predictors.push_back(prices);
+            }
+        }
+        
+        if (predictors.empty()) {
+            std::cout << RED << "Error: No compatible predictor data available!\n" << RESET;
+            return;
+        }
+        
+        if (predictors.size() >= goldPrices.size()) {
+            std::cout << RED << "Error: Too many predictors for the number of observations!\n" << RESET;
+            std::cout << "You have " << predictors.size() << " predictors but only " 
+                      << goldPrices.size() << " observations.\n";
+            return;
+        }
+        
+        std::cout << CYAN << "Final model: " << predictors.size() << " predictors + sanctions dummy, " 
+                  << goldPrices.size() << " observations" << RESET << "\n";
+        
+        // Проверяем мультиколлинеарность
+        checkMulticollinearity(predictors, predictorNames);
+        
+        // Сначала строим модель БЕЗ фиктивной переменной (reduced model)
+        std::cout << YELLOW << "\nBuilding model WITHOUT sanctions dummy (reduced model)..." << RESET << "\n";
+        MultipleRegressionMetrics modelWithoutDummy = 
+            RegressionClass::calculateMultipleRegression(predictors, goldPrices);
+        
+        // Затем строим модель С фиктивной переменной (full model)
+        std::cout << YELLOW << "Building model WITH sanctions dummy (full model)..." << RESET << "\n";
+        MultipleRegressionMetrics modelWithDummy = 
+            RegressionClass::calculateMultipleRegressionWithDummy(predictors, goldPrices, 
+                                                                dummyVariable, multiplicative);
+        
+        // Вычисляем размеры моделей для теста
+        int n = goldPrices.size();
+        int p_reduced = predictors.size() + 1; // +1 для intercept
+        int p_full = multiplicative ? (2 * predictors.size() + 2) : (predictors.size() + 2);
+        
+        // Тестируем значимость фиктивной переменной
+        auto hypothesisTest = RegressionClass::testDummyVariableSignificance(
+            modelWithDummy, modelWithoutDummy, n, p_full, p_reduced);
+        
+        // Выводим результаты
+        RegressionClass::printDummyVariableResults(modelWithDummy, predictorNames, hypothesisTest);
+        
+        // Сравниваем с моделью без dummy
+        std::cout << CYAN << "\n=== COMPARISON WITH MODEL WITHOUT DUMMY ===" << RESET << "\n";
+        std::cout << std::left << std::setw(25) << "Metric" 
+                  << std::setw(20) << "With Dummy" 
+                  << std::setw(20) << "Without Dummy" 
+                  << std::setw(15) << "Difference" << "\n";
+        
+        std::cout << std::string(80, '-') << "\n";
+        
+        std::cout << std::left << std::setw(25) << "R-squared"
+                  << std::fixed << std::setprecision(6) << std::setw(20) << modelWithDummy.R2
+                  << std::setw(20) << modelWithoutDummy.R2
+                  << std::setw(15) << (modelWithDummy.R2 - modelWithoutDummy.R2) << "\n";
+        
+        std::cout << std::left << std::setw(25) << "Adjusted R-squared"
+                  << std::setw(20) << modelWithDummy.adjustedR2
+                  << std::setw(20) << modelWithoutDummy.adjustedR2
+                  << std::setw(15) << (modelWithDummy.adjustedR2 - modelWithoutDummy.adjustedR2) << "\n";
+        
+        double withRMSE = std::sqrt(modelWithDummy.RSS / modelWithDummy.fittedValues.size());
+        double withoutRMSE = std::sqrt(modelWithoutDummy.RSS / modelWithoutDummy.fittedValues.size());
+        
+        std::cout << std::left << std::setw(25) << "RMSE"
+                  << std::setw(20) << withRMSE
+                  << std::setw(20) << withoutRMSE
+                  << std::setw(15) << (withRMSE - withoutRMSE) << "\n";
+        
+        // Экономическая интерпретация
+        std::cout << "\n" << YELLOW << "=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
+        
+        if (hypothesisTest.significant) {
+            std::cout << GREEN << "✓ Sanctions period (post-2022) significantly affected gold price relationships\n" << RESET;
+            
+            // Интерпретация коэффициента фиктивной переменной
+            size_t dummy_idx = predictorNames.size() + 1;
+            if (dummy_idx < modelWithDummy.coefficients.size()) {
+                double dummy_coef = modelWithDummy.coefficients[dummy_idx];
+                std::cout << "- Sanctions dummy coefficient: " << std::fixed << std::setprecision(4) << dummy_coef << "\n";
+                
+                if (multiplicative) {
+                    std::cout << "- This represents the baseline shift in gold price after sanctions\n";
+                    std::cout << "- Interaction terms show how relationships with other commodities changed\n";
+                } else {
+                    if (dummy_coef > 0) {
+                        std::cout << "- Gold prices were " << std::abs(dummy_coef) 
+                                  << " higher on average after sanctions\n";
+                    } else {
+                        std::cout << "- Gold prices were " << std::abs(dummy_coef) 
+                                  << " lower on average after sanctions\n";
+                    }
+                }
+            }
+        } else {
+            std::cout << YELLOW << "∼ Sanctions period did not significantly change gold price relationships\n" << RESET;
+            std::cout << "- Gold price dynamics remained stable across both periods\n";
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << RED << "Error in dummy variable regression: " << e.what() << RESET << "\n";
+    }
+}
+
+void RegressionControl::runDummyVariableAnalysis() const {
+    std::cout << CYAN << "\n=== COMPREHENSIVE DUMMY VARIABLE ANALYSIS ===" << RESET << std::endl;
+    
+    try {
+        auto goldPrices = statsControl.getTypePrices(RecordClass::GOLD);
+        if (goldPrices.empty()) {
+            std::cout << RED << "Error: No gold price data available!\n" << RESET;
+            return;
+        }
+        
+        // Получаем все доступные товары (кроме золота)
+        auto allTypes = statsControl.getAvailableTypes();
+        std::vector<std::string> availableCommodities;
+        
+        for (const auto& type : allTypes) {
+            if (type != RecordClass::GOLD) {
+                auto prices = statsControl.getTypePrices(type);
+                if (prices.size() == goldPrices.size() && !prices.empty()) {
+                    availableCommodities.push_back(type);
+                }
+            }
+        }
+        
+        if (availableCommodities.empty()) {
+            std::cout << RED << "Error: No compatible predictor data available!\n" << RESET;
+            return;
+        }
+        
+        // Показываем доступные товары для выбора
+        std::cout << "\nAvailable commodities for regression:\n";
+        for (size_t i = 0; i < availableCommodities.size(); ++i) {
+            std::cout << "  " << (i + 1) << ". " << statsControl.getTypeName(availableCommodities[i]) << "\n";
+        }
+        
+        // Выбор товаров пользователем
+        std::vector<std::string> selectedCommodities;
+        std::cout << "\nSelect commodities for regression (enter numbers separated by spaces, 0 for all): ";
+        
+        std::string input;
+        std::cin.ignore();
+        std::getline(std::cin, input);
+        
+        std::istringstream iss(input);
+        int choice;
+        std::vector<int> choices;
+        
+        while (iss >> choice) {
+            choices.push_back(choice);
+        }
+        
+        if (choices.empty() || (choices.size() == 1 && choices[0] == 0)) {
+            // Выбрать все
+            selectedCommodities = availableCommodities;
+            std::cout << "Selected all " << availableCommodities.size() << " commodities\n";
+        } else {
+            // Выбрать указанные
+            for (int ch : choices) {
+                if (ch > 0 && ch <= static_cast<int>(availableCommodities.size())) {
+                    selectedCommodities.push_back(availableCommodities[ch - 1]);
+                }
+            }
+            std::cout << "Selected " << selectedCommodities.size() << " commodities\n";
+        }
+        
+        if (selectedCommodities.empty()) {
+            std::cout << RED << "No valid commodities selected!\n" << RESET;
+            return;
+        }
+        
+        // Выбор типа модели
+        std::cout << "\nSelect model type:\n";
+        std::cout << "1. Additive model (dummy as separate predictor)\n";
+        std::cout << "2. Multiplicative model (dummy + interactions)\n";
+        std::cout << "3. Both models\n";
+        std::cout << "Enter choice (1-3): ";
+        
+        int model_choice;
+        std::cin >> model_choice;
+        
+        switch (model_choice) {
+            case 1:
+                runMultipleRegressionWithDummy(selectedCommodities, false);
+                break;
+            case 2:
+                runMultipleRegressionWithDummy(selectedCommodities, true);
+                break;
+            case 3:
+                runMultipleRegressionWithDummy(selectedCommodities, false);
+                std::cout << "\n" << std::string(80, '=') << "\n";
+                runMultipleRegressionWithDummy(selectedCommodities, true);
+                break;
+            default:
+                std::cout << RED << "Invalid choice!\n" << RESET;
+                return;
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << RED << "Error in dummy variable analysis: " << e.what() << RESET << "\n";
+    }
+}

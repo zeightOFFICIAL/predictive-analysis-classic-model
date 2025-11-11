@@ -566,3 +566,285 @@ MultipleRegressionMetrics RegressionClass::calculateMultipleRegression(
     
     return results;
 }
+
+MultipleRegressionMetrics RegressionClass::calculateMultipleRegressionWithDummy(
+    const std::vector<std::vector<double>>& predictors,
+    const std::vector<double>& response,
+    const std::vector<int>& dummyVariable,
+    bool multiplicative) {
+    
+    MultipleRegressionMetrics results;
+    
+    if (predictors.empty() || response.empty() || dummyVariable.empty()) {
+        return results;
+    }
+    
+    size_t n = response.size();
+    size_t p = predictors.size();
+    
+    // Проверка размеров
+    for (const auto& predictor : predictors) {
+        if (predictor.size() != n) {
+            return results;
+        }
+    }
+    if (dummyVariable.size() != n) {
+        return results;
+    }
+    
+    // Создаем матрицу предикторов с фиктивной переменной
+    std::vector<std::vector<double>> extendedPredictors;
+    
+    if (multiplicative) {
+        // Мультипликативная модель: добавляем dummy и взаимодействия со всеми предикторами
+        extendedPredictors.resize(n, std::vector<double>(2 * p + 1));
+        
+        for (size_t i = 0; i < n; ++i) {
+            // Константа
+            extendedPredictors[i][0] = 1.0;
+            
+            // Основные предикторы
+            for (size_t j = 0; j < p; ++j) {
+                extendedPredictors[i][j + 1] = predictors[j][i];
+            }
+            
+            // Фиктивная переменная
+            extendedPredictors[i][p + 1] = static_cast<double>(dummyVariable[i]);
+            
+            // Взаимодействия с фиктивной переменной
+            for (size_t j = 0; j < p; ++j) {
+                extendedPredictors[i][p + 2 + j] = predictors[j][i] * dummyVariable[i];
+            }
+        }
+    } else {
+        // Аддитивная модель: просто добавляем dummy переменную
+        extendedPredictors.resize(n, std::vector<double>(p + 2));
+        
+        for (size_t i = 0; i < n; ++i) {
+            // Константа
+            extendedPredictors[i][0] = 1.0;
+            
+            // Основные предикторы
+            for (size_t j = 0; j < p; ++j) {
+                extendedPredictors[i][j + 1] = predictors[j][i];
+            }
+            
+            // Фиктивная переменная
+            extendedPredictors[i][p + 1] = static_cast<double>(dummyVariable[i]);
+        }
+    }
+    
+    // Масштабирование предикторов
+    std::vector<std::vector<double>> scaledPredictors = extendedPredictors;
+    size_t total_p = extendedPredictors[0].size();
+    std::vector<double> means(total_p, 0.0);
+    std::vector<double> stddevs(total_p, 1.0);
+    
+    // Не масштабируем константу и фиктивную переменную
+    for (size_t j = 1; j < total_p; ++j) {
+        double mean = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            mean += scaledPredictors[i][j];
+        }
+        means[j] = mean / n;
+        
+        double variance = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            variance += (scaledPredictors[i][j] - means[j]) * (scaledPredictors[i][j] - means[j]);
+        }
+        stddevs[j] = std::sqrt(variance / (n - 1));
+        
+        if (stddevs[j] > 1e-10) {
+            for (size_t i = 0; i < n; ++i) {
+                scaledPredictors[i][j] = (scaledPredictors[i][j] - means[j]) / stddevs[j];
+            }
+        }
+    }
+    
+    // Решаем OLS
+    results.coefficients = LinearAlgebra::solveOLS(scaledPredictors, response, 0.1);
+    if (results.coefficients.empty()) {
+        return results;
+    }
+    
+    // Обратное масштабирование коэффициентов
+    for (size_t j = 1; j < total_p; ++j) {
+        if (stddevs[j] > 1e-10) {
+            results.coefficients[j] /= stddevs[j];
+            results.coefficients[0] -= results.coefficients[j] * means[j];
+        }
+    }
+    
+    // Расчет fitted values и остатков
+    results.fittedValues.resize(n);
+    results.residuals.resize(n);
+    
+    double y_mean = std::accumulate(response.begin(), response.end(), 0.0) / n;
+    
+    results.TSS = 0.0;
+    results.RSS = 0.0;
+    
+    for (size_t i = 0; i < n; ++i) {
+        double y_pred = 0.0;
+        for (size_t j = 0; j < total_p; ++j) {
+            y_pred += results.coefficients[j] * extendedPredictors[i][j];
+        }
+        results.fittedValues[i] = y_pred;
+        
+        double residual = response[i] - y_pred;
+        results.residuals[i] = residual;
+        
+        results.TSS += (response[i] - y_mean) * (response[i] - y_mean);
+        results.RSS += residual * residual;
+    }
+    
+    results.ESS = results.TSS - results.RSS;
+    results.R2 = (results.TSS > 1e-10) ? (results.ESS / results.TSS) : 0.0;
+    
+    if (n > total_p) {
+        results.adjustedR2 = 1.0 - (1.0 - results.R2) * (static_cast<double>(n) - 1) / (n - total_p);
+    } else {
+        results.adjustedR2 = results.R2;
+    }
+    
+    if (total_p > 1 && n > total_p && results.RSS > 1e-10) {
+        results.Fstatistic = (results.ESS / (total_p - 1)) / (results.RSS / (n - total_p));
+        results.FpValue = calculatePValue(results.Fstatistic, total_p - 1, n - total_p);
+    }
+    
+    calculateStandardErrors(results, extendedPredictors, response);
+    
+    return results;
+}
+
+HypothesisTest RegressionClass::testDummyVariableSignificance(
+    const MultipleRegressionMetrics& modelWithDummy,
+    const MultipleRegressionMetrics& modelWithoutDummy,
+    int n, int p_full, int p_reduced) {
+    
+    HypothesisTest test;
+    
+    test.RSS_full = modelWithDummy.RSS;
+    test.RSS_reduced = modelWithoutDummy.RSS;
+    test.df_full = n - p_full;
+    test.df_reduced = n - p_reduced;
+    
+    int df_numerator = p_full - p_reduced;
+    int df_denominator = n - p_full;
+    
+    if (df_numerator > 0 && df_denominator > 0 && test.RSS_reduced > test.RSS_full) {
+        test.Fstatistic = ((test.RSS_reduced - test.RSS_full) / df_numerator) / 
+                         (test.RSS_full / df_denominator);
+        test.pValue = calculatePValue(test.Fstatistic, df_numerator, df_denominator);
+        test.significant = (test.pValue < 0.05);
+    } else {
+        test.Fstatistic = 0.0;
+        test.pValue = 1.0;
+        test.significant = false;
+    }
+    
+    return test;
+}
+
+void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics& results,
+                                              const std::vector<std::string>& predictorNames,
+                                              const HypothesisTest& hypothesisTest) {
+    
+    std::cout << "\n" << "=== REGRESSION WITH DUMMY VARIABLE (SANCTIONS) ===" << "\n";
+    
+    std::cout << "\nRegression Equation:\n";
+    std::cout << "Gold Price = " << std::fixed << std::setprecision(6) << results.coefficients[0];
+    
+    for (size_t i = 1; i < results.coefficients.size(); ++i) {
+        std::string sign = (results.coefficients[i] >= 0) ? " + " : " - ";
+        
+        if (i <= predictorNames.size()) {
+            // Основные предикторы
+            std::cout << sign << std::abs(results.coefficients[i]) << " x " << predictorNames[i - 1];
+        } else if (i == predictorNames.size() + 1) {
+            // Фиктивная переменная
+            std::cout << sign << std::abs(results.coefficients[i]) << " x Sanctions_Dummy";
+        } else {
+            // Взаимодействия
+            size_t interaction_idx = i - predictorNames.size() - 2;
+            std::cout << sign << std::abs(results.coefficients[i]) << " x " 
+                      << predictorNames[interaction_idx] << "_x_Sanctions";
+        }
+    }
+    std::cout << "\n";
+    
+    std::cout << "\nModel Quality Metrics:\n";
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << "R-squared: " << results.R2 << " (" << (results.R2 * 100) << "%)\n";
+    std::cout << "Adjusted R-squared: " << results.adjustedR2 << "\n";
+    std::cout << "F-statistic: " << results.Fstatistic << "\n";
+    
+    std::cout << "\n" << "=== DUMMY VARIABLE SIGNIFICANCE TEST ===" << "\n";
+    std::cout << "F-statistic for dummy variable: " << std::fixed << std::setprecision(4) 
+              << hypothesisTest.Fstatistic << "\n";
+    std::cout << "p-value: " << hypothesisTest.pValue << "\n";
+    std::cout << "Significant at 5% level: " << (hypothesisTest.significant ? "YES" : "NO") << "\n";
+    
+    if (hypothesisTest.significant) {
+        std::cout  << "✓ The dummy variable (sanctions) significantly improves the model\n";
+        std::cout << "This suggests structural change in gold price relationships after 2022\n";
+    } else {
+        std::cout  << "∼ The dummy variable does not significantly improve the model\n";
+        std::cout << "Gold price relationships remained stable across both periods\n";
+    }
+    
+    std::cout << "\nIndividual Coefficients:\n";
+    std::cout << std::left << std::setw(25) << "Variable" 
+              << std::setw(15) << "Coefficient" 
+              << std::setw(12) << "Std Error" 
+              << std::setw(10) << "t-stat" 
+              << std::setw(12) << "p-value" 
+              << "Significance\n";
+    
+    std::cout << std::string(74, '-') << "\n";
+    
+    // Intercept
+    std::string sig = getSignificanceStars(results.tpValues[0]);
+    std::cout << std::left << std::setw(25) << "Intercept"
+              << std::fixed << std::setprecision(6) << std::setw(15) << results.coefficients[0]
+              << std::setw(12) << results.standardErrors[0]
+              << std::setw(10) << results.tStatistics[0]
+              << std::setw(12) << results.tpValues[0]
+              << sig << "\n";
+    
+    // Основные предикторы
+    for (size_t i = 1; i <= predictorNames.size(); ++i) {
+        sig = getSignificanceStars(results.tpValues[i]);
+        std::cout << std::left << std::setw(25) << predictorNames[i - 1]
+                  << std::setw(15) << results.coefficients[i]
+                  << std::setw(12) << results.standardErrors[i]
+                  << std::setw(10) << results.tStatistics[i]
+                  << std::setw(12) << results.tpValues[i]
+                  << sig << "\n";
+    }
+    
+    // Фиктивная переменная
+    if (predictorNames.size() + 1 < results.coefficients.size()) {
+        size_t dummy_idx = predictorNames.size() + 1;
+        sig = getSignificanceStars(results.tpValues[dummy_idx]);
+        std::cout << std::left << std::setw(25) << "Sanctions_Dummy"
+                  << std::setw(15) << results.coefficients[dummy_idx]
+                  << std::setw(12) << results.standardErrors[dummy_idx]
+                  << std::setw(10) << results.tStatistics[dummy_idx]
+                  << std::setw(12) << results.tpValues[dummy_idx]
+                  << sig << "\n";
+    }
+    
+    // Взаимодействия (для мультипликативной модели)
+    for (size_t i = predictorNames.size() + 2; i < results.coefficients.size(); ++i) {
+        size_t interaction_idx = i - predictorNames.size() - 2;
+        std::string interaction_name = predictorNames[interaction_idx] + "_x_Sanctions";
+        sig = getSignificanceStars(results.tpValues[i]);
+        std::cout << std::left << std::setw(25) << interaction_name
+                  << std::setw(15) << results.coefficients[i]
+                  << std::setw(12) << results.standardErrors[i]
+                  << std::setw(10) << results.tStatistics[i]
+                  << std::setw(12) << results.tpValues[i]
+                  << sig << "\n";
+    }
+}

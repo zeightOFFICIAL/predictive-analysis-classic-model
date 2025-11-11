@@ -14,6 +14,9 @@ public:
     void runCommodityRegression(const std::string& commodityName, const std::string& commodityLabel) const;
     void runMultipleRegressionAllCommodities() const;
     void runMultipleRegressionSelected(const std::vector<std::string>& selectedCommodities) const;
+    void runMultipleRegressionWithDummy(const std::vector<std::string>& selectedCommodities, 
+                                       bool multiplicative = false) const;
+    void runDummyVariableAnalysis() const;
     
 private:
     const StatisticsControl& statsControl;
@@ -33,6 +36,7 @@ private:
                       const MultipleRegressionMetrics& reducedModel,
                       size_t fullPredictors,
                       size_t reducedPredictors) const;
+    std::vector<int> getSanctionsDummyVariable(size_t n) const;
 };
 
 #endif
