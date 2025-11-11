@@ -848,3 +848,157 @@ void RegressionClass::printDummyVariableResults(const MultipleRegressionMetrics&
                   << sig << "\n";
     }
 }
+
+WaldTest RegressionClass::performWaldTest(
+    const MultipleRegressionMetrics& model,
+    const std::vector<int>& coefficientIndices,
+    const std::vector<double>& hypothesizedValues) {
+    
+    WaldTest test;
+    test.testedIndices = coefficientIndices;
+    
+    if (coefficientIndices.empty() || model.coefficients.empty() || 
+        model.standardErrors.empty()) {
+        return test;
+    }
+    
+    size_t k = coefficientIndices.size();
+    std::vector<double> h0_values(k, 0.0);
+    
+    // Если заданы гипотетические значения, используем их, иначе тестируем на равенство нулю
+    if (!hypothesizedValues.empty() && hypothesizedValues.size() == k) {
+        h0_values = hypothesizedValues;
+        test.hypothesis = "H0: coefficients = [";
+        for (size_t i = 0; i < k; ++i) {
+            test.hypothesis += std::to_string(h0_values[i]);
+            if (i < k - 1) test.hypothesis += ", ";
+        }
+        test.hypothesis += "]";
+    } else {
+        test.hypothesis = "H0: coefficients = 0";
+    }
+    
+    // Вычисляем статистику Вальда
+    test.chi2Statistic = 0.0;
+    
+    for (size_t i = 0; i < k; ++i) {
+        int idx = coefficientIndices[i];
+        if (idx < static_cast<int>(model.coefficients.size()) && 
+            idx < static_cast<int>(model.standardErrors.size())) {
+            
+            if (model.standardErrors[idx] > 1e-10) {
+                double z_score = (model.coefficients[idx] - h0_values[i]) / 
+                                model.standardErrors[idx];
+                test.chi2Statistic += z_score * z_score;
+            }
+        }
+    }
+    
+    // Вычисляем p-value (распределение хи-квадрат с k степенями свободы)
+    if (k > 0) {
+        // Используем F-распределение для вычисления p-value для хи-квадрат
+        test.pValue = calculatePValue(test.chi2Statistic, k, 1000000); // Большие степени свободы для аппроксимации хи-квадрат
+        test.significant = (test.pValue < 0.05);
+    }
+    
+    return test;
+}
+
+WaldTest RegressionClass::performWaldTestForDummy(
+    const MultipleRegressionMetrics& modelWithDummy,
+    const std::vector<std::string>& predictorNames,
+    bool multiplicative) {
+    
+    WaldTest test;
+    
+    if (modelWithDummy.coefficients.empty()) {
+        return test;
+    }
+    
+    std::vector<int> indicesToTest;
+    
+    if (multiplicative) {
+        // Для мультипликативной модели тестируем все коэффициенты, связанные с dummy
+        // Фиктивная переменная и все взаимодействия
+        size_t p = predictorNames.size();
+        
+        // Индекс фиктивной переменной
+        if (p + 1 < modelWithDummy.coefficients.size()) {
+            indicesToTest.push_back(p + 1);
+        }
+        
+        // Индексы взаимодействий
+        for (size_t i = p + 2; i < modelWithDummy.coefficients.size(); ++i) {
+            indicesToTest.push_back(i);
+        }
+        
+        test.hypothesis = "H0: All sanctions-related coefficients (dummy + interactions) = 0";
+    } else {
+        // Для аддитивной модели тестируем только фиктивную переменную
+        size_t p = predictorNames.size();
+        
+        if (p + 1 < modelWithDummy.coefficients.size()) {
+            indicesToTest.push_back(p + 1);
+            test.hypothesis = "H0: Sanctions dummy coefficient = 0";
+        }
+    }
+    
+    if (indicesToTest.empty()) {
+        return test;
+    }
+    
+    test = performWaldTest(modelWithDummy, indicesToTest);
+    test.testedIndices = indicesToTest;
+    
+    return test;
+}
+
+void RegressionClass::printWaldTestResults(const WaldTest& waldTest) {
+    std::cout << "\n" << "=== WALD TEST RESULTS ===" << "\n";
+    
+    std::cout << "Hypothesis: " << waldTest.hypothesis << "\n";
+    std::cout << "Chi-square statistic: " << std::fixed << std::setprecision(4) 
+              << waldTest.chi2Statistic << "\n";
+    std::cout << "Degrees of freedom: " << waldTest.testedIndices.size() << "\n";
+    std::cout << "p-value: " << std::scientific << waldTest.pValue 
+              << std::fixed << " (" << waldTest.pValue << ")\n";
+    std::cout << "Significant at 5% level: " << (waldTest.significant ? "YES" : "NO") << "\n";
+    
+    if (waldTest.significant) {
+        std::cout << "✓ Reject null hypothesis - coefficients are statistically significant\n";
+    } else {
+        std::cout << "∼ Fail to reject null hypothesis - coefficients are not statistically significant\n";
+    }
+    
+    // Критические значения хи-квадрат распределения
+    std::cout << "\nCritical values for chi-square distribution (df=" 
+              << waldTest.testedIndices.size() << "):\n";
+    std::cout << "90% level: " << std::setprecision(3);
+    switch (waldTest.testedIndices.size()) {
+        case 1: std::cout << "2.71"; break;
+        case 2: std::cout << "4.61"; break;
+        case 3: std::cout << "6.25"; break;
+        case 4: std::cout << "7.78"; break;
+        case 5: std::cout << "9.24"; break;
+        default: std::cout << ">9.24"; break;
+    }
+    std::cout << " | 95% level: ";
+    switch (waldTest.testedIndices.size()) {
+        case 1: std::cout << "3.84"; break;
+        case 2: std::cout << "5.99"; break;
+        case 3: std::cout << "7.81"; break;
+        case 4: std::cout << "9.49"; break;
+        case 5: std::cout << "11.07"; break;
+        default: std::cout << ">11.07"; break;
+    }
+    std::cout << " | 99% level: ";
+    switch (waldTest.testedIndices.size()) {
+        case 1: std::cout << "6.63"; break;
+        case 2: std::cout << "9.21"; break;
+        case 3: std::cout << "11.34"; break;
+        case 4: std::cout << "13.28"; break;
+        case 5: std::cout << "15.09"; break;
+        default: std::cout << ">15.09"; break;
+    }
+    std::cout << "\n";
+}

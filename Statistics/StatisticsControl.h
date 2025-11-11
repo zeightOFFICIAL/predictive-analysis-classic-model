@@ -8,6 +8,8 @@
 class StatisticsControl {
 public:
     explicit StatisticsControl(const StatisticsClass& stats);    
+
+    const StatisticsClass& getStatsClass() const { return statsRef; }
     void showFullReport() const;
     void showSummaryTable() const;
     void showCommodityAnalysis(const std::string& typeName) const;

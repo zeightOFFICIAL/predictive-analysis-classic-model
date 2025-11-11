@@ -39,6 +39,14 @@ struct HypothesisTest {
     bool significant;
 };
 
+struct WaldTest {
+    double chi2Statistic;
+    double pValue;
+    bool significant;
+    std::vector<int> testedIndices;
+    std::string hypothesis;
+};
+
 class RegressionClass {
 public:
     static RegressionMetrics calculateRegression(const std::vector<double>& X, const std::vector<double>& Y);
@@ -79,4 +87,16 @@ public:
     static void printDummyVariableResults(const MultipleRegressionMetrics& results,
                                         const std::vector<std::string>& predictorNames,
                                         const HypothesisTest& hypothesisTest);
+
+    static WaldTest performWaldTest(
+        const MultipleRegressionMetrics& model,
+        const std::vector<int>& coefficientIndices,
+        const std::vector<double>& hypothesizedValues = {});
+    
+    static WaldTest performWaldTestForDummy(
+        const MultipleRegressionMetrics& modelWithDummy,
+        const std::vector<std::string>& predictorNames,
+        bool multiplicative = false);
+    
+    static void printWaldTestResults(const WaldTest& waldTest);
 };

@@ -17,6 +17,7 @@ public:
     void runMultipleRegressionWithDummy(const std::vector<std::string>& selectedCommodities, 
                                        bool multiplicative = false) const;
     void runDummyVariableAnalysis() const;
+
     
 private:
     const StatisticsControl& statsControl;

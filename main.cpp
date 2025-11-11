@@ -28,10 +28,12 @@ static void displayMenu() {
     std::cout << "2. Show dataset overview\n";
     std::cout << "3. Show full statistics report\n";
     std::cout << "4. Compare commodities\n";
+    
     std::cout << "\n" << GREEN_COLOR << "===== CORRELATION ANALYSIS MENU =====" << RESET << "\n";
     std::cout << "5. Analyze correlations with Gold\n";
     std::cout << "6. Generate correlation graphs\n";
     std::cout << "7. Generate correlation matrix\n";
+    
     std::cout << "\n" << MAGENTA_COLOR << "======== REGRESSION ANALYSIS ========" << RESET << "\n";
     std::cout << "8. Run Silver-Gold regression\n";
     std::cout << "9. Run Copper-Gold regression\n";
@@ -42,14 +44,17 @@ static void displayMenu() {
     std::cout << "14. Run multi-regression analysis (metals)\n";
     std::cout << "15. Run multi-regression analysis (significant predictors++)\n";
     std::cout << "16. Run multi-regression analysis (significant predictors, two most)\n";
+    
     std::cout << "\n" << CYAN_COLOR << "======== DISTRIBUTION PLOTS =========" << RESET << "\n";
     std::cout << "17. Generate histograms for all commodities\n";
     std::cout << "18. Generate boxplots for all commodities\n";
+    
     std::cout << "\n" << CYAN_COLOR << "========= FICTIVE PARAMETER =========" << RESET << "\n";
     std::cout << "19. Show fictive parameter details\n";
     std::cout << "20. Run multi-regression analysis (all predictors+fictive)\n";
+    
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-14): ";
+    std::cout << "Enter your choice (0-23): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -65,10 +70,6 @@ static void runCustomRegression(const StatisticsControl& statsControl, const Reg
     auto items = statsControl.getAvailableTypes();
     if (items.empty()) {
         std::cout << RED_COLOR << "No commodities available for analysis!\n" << RESET;
-        return;
-    }
-    if (items.empty()) {
-        std::cout << YELLOW_COLOR << "No commodities available for regression with Gold\n" << RESET;
         return;
     }
 
@@ -124,6 +125,7 @@ int main(int argc, char* argv[]) {
     StatisticsControl statsControl(stats);
     RegressionControl regControl(statsControl);
 
+    // Define predictor sets for different regression scenarios
     const std::vector<std::string> significantPredictors_set1 = {"NG=F_closing_price"};
     const std::vector<std::string> significantPredictors_set2 = {"ZS=F_closing_price", "ZC=F_closing_price", "ZW=F_closing_price"};
     const std::vector<std::string> significantPredictors_set3 = {"SI=F_closing_price", "HG=F_closing_price", "PA=F_closing_price", "PL=F_closing_price"};
@@ -144,6 +146,7 @@ int main(int argc, char* argv[]) {
         std::cin.ignore();
 
         switch (choice) {
+            // Basic data operations
             case 1: { 
                 auto dates = recordControl.getAvailableDatesFormatted();
                 if (dates.empty()) {
@@ -168,6 +171,7 @@ int main(int argc, char* argv[]) {
                 statsControl.showComparativeAnalysis();
                 break;
 
+            // Correlation analysis
             case 5:
                 statsControl.showGoldCorrelations();
                 break;
@@ -177,6 +181,12 @@ int main(int argc, char* argv[]) {
                 statsControl.generateScatterPlotsWithGNUplot();
                 break;
 
+            case 7:
+                std::cout << CYAN_COLOR << "\nGenerating correlation matrix..." << RESET << "\n";
+                statsControl.generateCorrelationMatrix();
+                break;
+
+            // Regression analysis
             case 8:
                 regControl.runSilverGoldRegression();
                 break;
@@ -199,20 +209,21 @@ int main(int argc, char* argv[]) {
             
             case 13:
                 regControl.runMultipleRegressionSelected(significantPredictors_set2);
-            break;
+                break;
 
             case 14:
                 regControl.runMultipleRegressionSelected(significantPredictors_set3);
-            break;
+                break;
 
             case 15:
                 regControl.runMultipleRegressionSelected(significantPredictors_set4);
-            break;
+                break;
 
             case 16:
                 regControl.runMultipleRegressionSelected(significantPredictors_set5);
-            break;
+                break;
 
+            // Distribution plots
             case 17:
                 std::cout << CYAN_COLOR << "\nGenerating histograms..." << RESET << "\n";
                 statsControl.generateHistograms();
@@ -223,17 +234,13 @@ int main(int argc, char* argv[]) {
                 statsControl.generateBoxplots();
                 break;
 
+            // Fictive parameter
             case 19:
                 recordControl.displaySanctionsInfo();
                 break;
 
             case 20:
-                regControl.runMultipleRegressionWithDummy(significantPredictors_set2);
-                break;
-
-            case 7:
-                std::cout << CYAN_COLOR << "\nGenerating correlation matrix..." << RESET << "\n";
-                statsControl.generateCorrelationMatrix();
+                regControl.runMultipleRegressionWithDummy(significantPredictors_set1, true);
                 break;
 
             case 0:
@@ -241,7 +248,7 @@ int main(int argc, char* argv[]) {
                 return 0;
 
             default:
-                std::cout << RED_COLOR << "Invalid option! Please choose 0-9.\n" << RESET;
+                std::cout << RED_COLOR << "Invalid option! Please choose 0-23.\n" << RESET;
         }
     }
 }

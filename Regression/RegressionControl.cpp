@@ -397,172 +397,193 @@ void RegressionControl::displayMultipleRegressionResults(const MultipleRegressio
 
 
 std::vector<int> RegressionControl::getSanctionsDummyVariable(size_t n) const {
-    std::vector<int> dummy(n, 0);
-    
-    // Для простоты - здесь должна быть логика получения дат и определения периода
-    // В реальной реализации нужно получить даты из данных и определить период
-    // Сейчас создаем dummy вручную для демонстрации
-    // В реальном коде нужно использовать dataRef.getAllDates() и определить год
-    
-    // Пример: первые 2/3 данных - pre-sanctions (0), последние 1/3 - post-sanctions (1)
-    size_t split_point = n * 2 / 3;
-    for (size_t i = split_point; i < n; ++i) {
-        dummy[i] = 1;
+    std::vector<int> dummy;
+    dummy.reserve(n);
+
+    try {
+        const RecordClass& recordRef = statsControl.getStatsClass().getDataRef();
+        std::map<time_t, int> sanctionsMap = recordRef.getAllSanctionsDummy();
+        std::vector<time_t> allDates = recordRef.getAllDates();
+
+        if (allDates.empty() || sanctionsMap.empty()) {
+            std::cerr << "\033[31mError: No sanction dummy or date data available!\033[0m\n";
+            return std::vector<int>(n, 0);
+        }
+
+        dummy.resize(allDates.size(), 0);
+        for (size_t i = 0; i < allDates.size(); ++i) {
+            auto it = sanctionsMap.find(allDates[i]);
+            if (it != sanctionsMap.end()) {
+                dummy[i] = it->second;
+            }
+        }
+
+        // Safety resize to match n (goldPrices.size())
+        if (dummy.size() > n) dummy.resize(n);
+        else if (dummy.size() < n) dummy.insert(dummy.end(), n - dummy.size(), dummy.back());
+
+    } catch (const std::exception& e) {
+        std::cerr << "\033[31mError retrieving sanctions dummy: "
+                  << e.what() << "\033[0m\n";
+        dummy.assign(n, 0);
     }
-    
+
     return dummy;
 }
 
 
-void RegressionControl::runMultipleRegressionWithDummy(const std::vector<std::string>& selectedCommodities, 
-                                                      bool multiplicative) const {
+
+
+
+
+void RegressionControl::runMultipleRegressionWithDummy(
+    const std::vector<std::string>& selectedCommodities,
+    bool multiplicative) const 
+{
     if (selectedCommodities.empty()) {
         std::cout << RED << "Error: No commodities selected for regression!\n" << RESET;
         return;
     }
-    
-    std::string model_type = multiplicative ? "Multiplicative" : "Additive";
-    std::cout << CYAN << "\n=== " << model_type << " DUMMY REGRESSION: Gold vs Selected Commodities + Sanctions ===" << RESET << std::endl;
-    
-    std::cout << "Selected commodities: ";
-    for (size_t i = 0; i < selectedCommodities.size(); ++i) {
-        std::cout << statsControl.getTypeName(selectedCommodities[i]);
-        if (i < selectedCommodities.size() - 1) {
-            std::cout << ", ";
-        }
-    }
-    std::cout << "\nDummy variable: Sanctions (0=Pre-2022, 1=Post-2022)\n";
-    std::cout << "Model type: " << model_type << "\n\n";
-    
+
+    const std::string modelType = multiplicative ? "Multiplicative" : "Additive";
+    std::cout << CYAN << "\n=== " << modelType 
+              << " DUMMY REGRESSION: Gold vs Selected Commodities + Sanctions ==="
+              << RESET << std::endl;
+
     try {
         auto goldPrices = statsControl.getTypePrices(RecordClass::GOLD);
-        if (goldPrices.empty()) {
+        const size_t n = goldPrices.size();
+        if (n == 0) {
             std::cout << RED << "Error: No gold price data available!\n" << RESET;
             return;
         }
-        
-        // Получаем фиктивную переменную
-        auto dummyVariable = getSanctionsDummyVariable(goldPrices.size());
-        
-        // Собираем предикторы
+
+        // --- Create dummy variable safely ---
+        auto dummyVariable = getSanctionsDummyVariable(n);
+        if (dummyVariable.size() != n) {
+            std::cout << RED << "Error: Dummy variable size mismatch!\n" << RESET;
+            return;
+        }
+
+        // --- Build predictors ---
         std::vector<std::string> predictorNames;
         std::vector<std::vector<double>> predictors;
-        
+
         for (const auto& commodity : selectedCommodities) {
-            if (commodity == RecordClass::GOLD) {
-                std::cout << YELLOW << "Skipping Gold (cannot use as predictor for itself)\n" << RESET;
+            if (commodity == RecordClass::GOLD) continue;
+            auto prices = statsControl.getTypePrices(commodity);
+
+            // Resize or reject inconsistent predictors
+            if (prices.size() > n) prices.resize(n);
+            if (prices.size() < n) {
+                std::cout << YELLOW << "Warning: Skipping " 
+                          << statsControl.getTypeName(commodity)
+                          << " (insufficient data: " << prices.size() << " vs " << n << ")" << RESET << "\n";
                 continue;
             }
-            
-            auto prices = statsControl.getTypePrices(commodity);
-            if (prices.size() == goldPrices.size() && !prices.empty()) {
-                predictorNames.push_back(statsControl.getTypeName(commodity));
-                predictors.push_back(prices);
-            }
+
+            predictorNames.push_back(statsControl.getTypeName(commodity));
+            predictors.push_back(prices);
         }
-        
+
         if (predictors.empty()) {
-            std::cout << RED << "Error: No compatible predictor data available!\n" << RESET;
+            std::cout << RED << "Error: No valid predictors for regression!\n" << RESET;
             return;
         }
-        
-        if (predictors.size() >= goldPrices.size()) {
-            std::cout << RED << "Error: Too many predictors for the number of observations!\n" << RESET;
-            std::cout << "You have " << predictors.size() << " predictors but only " 
-                      << goldPrices.size() << " observations.\n";
+
+        if (predictors.size() >= n) {
+            std::cout << RED << "Error: Too many predictors for number of observations!\n" << RESET;
             return;
         }
-        
-        std::cout << CYAN << "Final model: " << predictors.size() << " predictors + sanctions dummy, " 
-                  << goldPrices.size() << " observations" << RESET << "\n";
-        
-        // Проверяем мультиколлинеарность
+
+        std::cout << CYAN << "Final model: " << predictors.size()
+                  << " predictors + sanctions dummy, "
+                  << n << " observations" << RESET << "\n";
+
+        // --- Check collinearity ---
         checkMulticollinearity(predictors, predictorNames);
-        
-        // Сначала строим модель БЕЗ фиктивной переменной (reduced model)
-        std::cout << YELLOW << "\nBuilding model WITHOUT sanctions dummy (reduced model)..." << RESET << "\n";
-        MultipleRegressionMetrics modelWithoutDummy = 
+
+        // --- Reduced model (without dummy) ---
+        MultipleRegressionMetrics modelWithoutDummy =
             RegressionClass::calculateMultipleRegression(predictors, goldPrices);
-        
-        // Затем строим модель С фиктивной переменной (full model)
-        std::cout << YELLOW << "Building model WITH sanctions dummy (full model)..." << RESET << "\n";
-        MultipleRegressionMetrics modelWithDummy = 
-            RegressionClass::calculateMultipleRegressionWithDummy(predictors, goldPrices, 
-                                                                dummyVariable, multiplicative);
-        
-        // Вычисляем размеры моделей для теста
-        int n = goldPrices.size();
-        int p_reduced = predictors.size() + 1; // +1 для intercept
-        int p_full = multiplicative ? (2 * predictors.size() + 2) : (predictors.size() + 2);
-        
-        // Тестируем значимость фиктивной переменной
-        auto hypothesisTest = RegressionClass::testDummyVariableSignificance(
-            modelWithDummy, modelWithoutDummy, n, p_full, p_reduced);
-        
-        // Выводим результаты
-        RegressionClass::printDummyVariableResults(modelWithDummy, predictorNames, hypothesisTest);
-        
-        // Сравниваем с моделью без dummy
-        std::cout << CYAN << "\n=== COMPARISON WITH MODEL WITHOUT DUMMY ===" << RESET << "\n";
-        std::cout << std::left << std::setw(25) << "Metric" 
-                  << std::setw(20) << "With Dummy" 
-                  << std::setw(20) << "Without Dummy" 
-                  << std::setw(15) << "Difference" << "\n";
-        
-        std::cout << std::string(80, '-') << "\n";
-        
-        std::cout << std::left << std::setw(25) << "R-squared"
-                  << std::fixed << std::setprecision(6) << std::setw(20) << modelWithDummy.R2
-                  << std::setw(20) << modelWithoutDummy.R2
-                  << std::setw(15) << (modelWithDummy.R2 - modelWithoutDummy.R2) << "\n";
-        
-        std::cout << std::left << std::setw(25) << "Adjusted R-squared"
-                  << std::setw(20) << modelWithDummy.adjustedR2
-                  << std::setw(20) << modelWithoutDummy.adjustedR2
-                  << std::setw(15) << (modelWithDummy.adjustedR2 - modelWithoutDummy.adjustedR2) << "\n";
-        
-        double withRMSE = std::sqrt(modelWithDummy.RSS / modelWithDummy.fittedValues.size());
-        double withoutRMSE = std::sqrt(modelWithoutDummy.RSS / modelWithoutDummy.fittedValues.size());
-        
-        std::cout << std::left << std::setw(25) << "RMSE"
-                  << std::setw(20) << withRMSE
-                  << std::setw(20) << withoutRMSE
-                  << std::setw(15) << (withRMSE - withoutRMSE) << "\n";
-        
-        // Экономическая интерпретация
-        std::cout << "\n" << YELLOW << "=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
-        
-        if (hypothesisTest.significant) {
-            std::cout << GREEN << "✓ Sanctions period (post-2022) significantly affected gold price relationships\n" << RESET;
-            
-            // Интерпретация коэффициента фиктивной переменной
-            size_t dummy_idx = predictorNames.size() + 1;
-            if (dummy_idx < modelWithDummy.coefficients.size()) {
-                double dummy_coef = modelWithDummy.coefficients[dummy_idx];
-                std::cout << "- Sanctions dummy coefficient: " << std::fixed << std::setprecision(4) << dummy_coef << "\n";
-                
-                if (multiplicative) {
-                    std::cout << "- This represents the baseline shift in gold price after sanctions\n";
-                    std::cout << "- Interaction terms show how relationships with other commodities changed\n";
-                } else {
-                    if (dummy_coef > 0) {
-                        std::cout << "- Gold prices were " << std::abs(dummy_coef) 
-                                  << " higher on average after sanctions\n";
-                    } else {
-                        std::cout << "- Gold prices were " << std::abs(dummy_coef) 
-                                  << " lower on average after sanctions\n";
-                    }
+
+        // --- Full model (with dummy variable) ---
+        // Defensive duplication for multiplicative case
+        MultipleRegressionMetrics modelWithDummy;
+        if (multiplicative) {
+            // Create interaction terms explicitly and safely
+            std::vector<std::vector<double>> extendedPredictors = predictors;
+            for (const auto& pred : predictors) {
+                std::vector<double> interaction(n);
+                for (size_t i = 0; i < n; ++i) {
+                    interaction[i] = pred[i] * static_cast<double>(dummyVariable[i]);
                 }
+                extendedPredictors.push_back(interaction);
             }
+            // Add dummy itself
+            std::vector<double> dummyAsDouble(n);
+            std::transform(dummyVariable.begin(), dummyVariable.end(), dummyAsDouble.begin(),
+                           [](int d) { return static_cast<double>(d); });
+            extendedPredictors.push_back(dummyAsDouble);
+
+            modelWithDummy = RegressionClass::calculateMultipleRegression(
+                extendedPredictors, goldPrices);
         } else {
-            std::cout << YELLOW << "∼ Sanctions period did not significantly change gold price relationships\n" << RESET;
-            std::cout << "- Gold price dynamics remained stable across both periods\n";
+            // Add dummy as an additional independent variable
+            std::vector<std::vector<double>> extendedPredictors = predictors;
+            std::vector<double> dummyAsDouble(n);
+            std::transform(dummyVariable.begin(), dummyVariable.end(), dummyAsDouble.begin(),
+                           [](int d) { return static_cast<double>(d); });
+            extendedPredictors.push_back(dummyAsDouble);
+
+            modelWithDummy = RegressionClass::calculateMultipleRegression(
+                extendedPredictors, goldPrices);
         }
-        
+
+        // --- Dimension safety checks ---
+        if (modelWithDummy.fittedValues.size() != n ||
+            modelWithoutDummy.fittedValues.size() != n) {
+            std::cout << RED << "Error: Regression output dimension mismatch!\n" << RESET;
+            return;
+        }
+
+        // --- Compute test parameters ---
+        const int p_reduced = static_cast<int>(predictors.size()) + 1;
+        const int p_full = multiplicative
+            ? static_cast<int>(2 * predictors.size() + 2)
+            : static_cast<int>(predictors.size() + 2);
+
+        auto fTest = RegressionClass::testDummyVariableSignificance(
+            modelWithDummy, modelWithoutDummy, static_cast<int>(n), p_full, p_reduced);
+
+        auto waldTest = RegressionClass::performWaldTestForDummy(
+            modelWithDummy, predictorNames, multiplicative);
+
+        RegressionClass::printDummyVariableResults(modelWithDummy, predictorNames, fTest);
+        RegressionClass::printWaldTestResults(waldTest);
+
+        // --- Comparison summary ---
+        std::cout << CYAN << "\n=== COMPARISON SUMMARY ===" << RESET << "\n";
+        std::cout << "ΔR² = " << std::fixed << std::setprecision(6)
+                  << (modelWithDummy.R2 - modelWithoutDummy.R2)
+                  << ", ΔAdj.R² = " << (modelWithDummy.adjustedR2 - modelWithoutDummy.adjustedR2)
+                  << ", F(" << (p_full - p_reduced) << "," << (n - p_full) << ") = "
+                  << fTest.Fstatistic << "\n";
+
+        // --- Interpretation ---
+        std::cout << YELLOW << "\n=== ECONOMIC INTERPRETATION ===" << RESET << "\n";
+        if (fTest.significant || waldTest.significant) {
+            std::cout << GREEN << "✓ Sanctions period significantly altered gold price dynamics\n" << RESET;
+        } else {
+            std::cout << YELLOW << "∼ Sanctions period not statistically significant\n" << RESET;
+        }
+
     } catch (const std::exception& e) {
-        std::cerr << RED << "Error in dummy variable regression: " << e.what() << RESET << "\n";
+        std::cerr << RED << "Error in dummy variable regression: " 
+                  << e.what() << RESET << "\n";
     }
 }
+
 
 void RegressionControl::runDummyVariableAnalysis() const {
     std::cout << CYAN << "\n=== COMPREHENSIVE DUMMY VARIABLE ANALYSIS ===" << RESET << std::endl;
