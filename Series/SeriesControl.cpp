@@ -476,3 +476,37 @@ void SeriesControl::plotIndividualComparison(const SeriesClass& smoothedSeries) 
 const SeriesClass& SeriesControl::getSeries() const {
     return series;
 }
+
+void SeriesControl::analyzeTrends() const {
+    std::cout << "=== TREND ANALYSIS ===" << std::endl;
+    std::cout << "Series: " << series.getName() << std::endl;
+    std::cout << "Number of points: " << series.size() << std::endl;
+    
+    auto [has_trend_mean, t_statistic] = series.checkTrendMeanDifferences();
+    
+    std::cout << "\n1. MEAN DIFFERENCES METHOD:" << std::endl;
+    std::cout << "T-statistic: " << t_statistic << std::endl;
+    std::cout << "Critical value (α=0.05): ±1.96" << std::endl;
+    std::cout << "Trend detected: " << (has_trend_mean ? "YES" : "NO") << std::endl;
+    
+    if (has_trend_mean) {
+        std::cout << "Trend direction: " << (t_statistic > 0 ? "DECREASING" : "INCREASING") << std::endl;
+    }
+    
+    auto [has_trend_foster, foster_statistic] = series.checkTrendFosterStewart();
+    
+    std::cout << "\n2. FOSTER-STEWART METHOD:" << std::endl;
+    std::cout << "Test statistic: " << foster_statistic << std::endl;
+    std::cout << "Critical value (α=0.05): ±1.96" << std::endl;
+    std::cout << "Trend detected: " << (has_trend_foster ? "YES" : "NO") << std::endl;
+    
+    std::cout << "\n=== FINAL CONCLUSION ===" << std::endl;
+    if (has_trend_mean && has_trend_foster) {
+        std::cout << "STRONG EVIDENCE of trend presence" << std::endl;
+    } else if (has_trend_mean || has_trend_foster) {
+        std::cout << "WEAK EVIDENCE of trend presence" << std::endl;
+    } else {
+        std::cout << "NO EVIDENCE of trend presence" << std::endl;
+    }
+    std::cout << "=================================" << std::endl << std::endl;
+}

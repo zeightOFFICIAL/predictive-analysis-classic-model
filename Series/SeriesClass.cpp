@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <iterator>
+#include <vector>
 
 SeriesClass::SeriesClass(const std::vector<double>& values, 
                        const std::vector<std::string>& times, 
@@ -209,4 +210,95 @@ std::vector<double> SeriesClass::generateTriangularWeights(size_t n) {
     }
     
     return weights;
+}
+
+std::pair<bool, double> SeriesClass::checkTrendMeanDifferences() const {
+    if (data.size() < 3) {
+        return {false, 0.0};
+    }
+    
+    size_t splitPoint = data.size() / 2;
+    
+    double mean1 = 0.0, mean2 = 0.0;
+    
+    for (size_t i = 0; i < splitPoint; ++i) {
+        mean1 += data[i];
+    }
+    mean1 /= splitPoint;
+    
+    for (size_t i = splitPoint; i < data.size(); ++i) {
+        mean2 += data[i];
+    }
+    mean2 /= (data.size() - splitPoint);
+    
+    double var1 = 0.0, var2 = 0.0;
+    
+    for (size_t i = 0; i < splitPoint; ++i) {
+        var1 += (data[i] - mean1) * (data[i] - mean1);
+    }
+    var1 /= (splitPoint - 1);
+    
+    for (size_t i = splitPoint; i < data.size(); ++i) {
+        var2 += (data[i] - mean2) * (data[i] - mean2);
+    }
+    var2 /= (data.size() - splitPoint - 1);
+    
+    double t_statistic = (mean1 - mean2) / std::sqrt(var1/splitPoint + var2/(data.size() - splitPoint));
+    
+    double critical_value = 1.96;
+    
+    bool has_trend = std::abs(t_statistic) > critical_value;
+    
+    return {has_trend, t_statistic};
+}
+
+std::pair<bool, double> SeriesClass::checkTrendFosterStewart() const {
+    if (data.size() < 3) {
+        return {false, 0.0};
+    }
+
+    double m_i = data[0];
+    double M_i = data[0]; 
+    
+    int u = 0;
+    int d = 0; 
+    int s = 0; 
+    
+    for (size_t i = 1; i < data.size(); ++i) {
+        if (data[i] > M_i) {
+            u++;
+            M_i = data[i];
+        } else if (data[i] < m_i) {
+            d++;
+            m_i = data[i];
+        } else {
+            s++;
+        }
+    }
+    
+    double L = u + d;
+    double T = u - d;
+    
+    if (data.size() > 25) {
+        double n = static_cast<double>(data.size());
+        double mean_L = (2.0 * std::log(n) - 3.4253) / 1.5;
+        double var_L = (2.0 * std::log(n) - 1.9072) / 2.25;
+        
+        double mean_T = 0.0;
+        double var_T = (2.0 * std::log(n) - 1.9072) / 2.25;
+        
+        double z_L = (L - mean_L) / std::sqrt(var_L);
+        double z_T = (T - mean_T) / std::sqrt(var_T);
+        
+        double critical_value = 1.96;
+        
+        bool has_trend = (std::abs(z_L) > critical_value) || (std::abs(z_T) > critical_value);
+        
+        return {has_trend, std::max(std::abs(z_L), std::abs(z_T))};
+    } else {
+        double expected_L = 2.0 * std::log(static_cast<double>(data.size()));
+        bool has_trend = std::abs(L - expected_L) > expected_L * 0.5;
+        
+        return {has_trend, std::abs(T)};
+    }
 }

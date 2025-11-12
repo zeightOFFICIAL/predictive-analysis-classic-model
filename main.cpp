@@ -71,16 +71,12 @@ static void displayMenu() {
     std::cout << "\n" << WHITE_COLOR << "========= TIME SERIES ANALYSIS ========" << RESET << "\n";
     std::cout << "32. Show time series information\n";
     std::cout << "33. Detect and process anomalies (Irwin criterion)\n";
-    std::cout << "34. Apply moving average smoothing (5 points)\n";
-    std::cout << "35. Apply weighted moving average (5 points)\n";
-    std::cout << "36. Apply weighted moving average (7 points)\n";
-    std::cout << "37. Apply chronological average (12 points)\n";
-    std::cout << "38. Apply exponential smoothing\n";
-    std::cout << "39. Compare all smoothing methods\n";
-    std::cout << "40. Generate all time series plots\n";
+    std::cout << "34. Analyze trend presence\n";
+    std::cout << "35. Compare all smoothing methods\n";
+    std::cout << "36. Generate all time series plots\n";
     
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-40): ";
+    std::cout << "Enter your choice (0-36): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -211,8 +207,8 @@ static void runTimeSeriesAnalysis(const RecordClass& data) {
     std::cout << "\n" << WHITE_COLOR << "=== TIME SERIES ANALYSIS OPTIONS ===" << RESET << "\n";
     std::cout << "1. Show series information\n";
     std::cout << "2. Detect and process anomalies\n";
-    std::cout << "3. Apply all smoothing methods and generate plots\n";
-    std::cout << "4. Apply individual smoothing method\n";
+    std::cout << "3. Analyze trend presence\n";
+    std::cout << "4. Apply all smoothing methods and generate plots\n";
     std::cout << "0. Back to main menu\n";
     std::cout << "Enter your choice: ";
     
@@ -232,7 +228,11 @@ static void runTimeSeriesAnalysis(const RecordClass& data) {
             seriesControl.processAnomalies(1.5);
             break;
             
-        case 3: {
+        case 3:
+            seriesControl.analyzeTrends();
+            break;
+            
+        case 4: {
             seriesControl.processAnomalies(1.5);
             auto ma5 = seriesControl.movingAverage5();
             auto wma5 = seriesControl.weightedMovingAverage5();
@@ -243,56 +243,6 @@ static void runTimeSeriesAnalysis(const RecordClass& data) {
             std::vector<SeriesClass> smoothedSeries = {ma5, wma5, wma7, ca12, expSmooth};
             seriesControl.displayComparison(smoothedSeries);
             seriesControl.plotAllSeries(smoothedSeries);
-            break;
-        }
-            
-        case 4: {
-            std::cout << "\n" << WHITE_COLOR << "=== SMOOTHING METHODS ===" << RESET << "\n";
-            std::cout << "1. Moving Average (5 points)\n";
-            std::cout << "2. Weighted Moving Average (5 points)\n";
-            std::cout << "3. Weighted Moving Average (7 points)\n";
-            std::cout << "4. Chronological Average (12 points)\n";
-            std::cout << "5. Exponential Smoothing\n";
-            std::cout << "Enter method choice: ";
-            
-            int methodChoice;
-            if (!(std::cin >> methodChoice)) {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                std::cout << RED_COLOR << "Invalid input!\n" << RESET;
-                return;
-            }
-            
-            switch (methodChoice) {
-                case 1: {
-                    auto smoothed = seriesControl.movingAverage5();
-                    seriesControl.plotIndividualComparison(smoothed);
-                    break;
-                }
-                case 2: {
-                    auto smoothed = seriesControl.weightedMovingAverage5();
-                    seriesControl.plotIndividualComparison(smoothed);
-                    break;
-                }
-                case 3: {
-                    auto smoothed = seriesControl.weightedMovingAverage7();
-                    seriesControl.plotIndividualComparison(smoothed);
-                    break;
-                }
-                case 4: {
-                    auto smoothed = seriesControl.chronologicalAverage12();
-                    seriesControl.plotIndividualComparison(smoothed);
-                    break;
-                }
-                case 5: {
-                    auto smoothed = seriesControl.exponentialSmoothing(0.3);
-                    seriesControl.plotIndividualComparison(smoothed);
-                    break;
-                }
-                default:
-                    std::cout << RED_COLOR << "Invalid method choice!\n" << RESET;
-                    return;
-            }
             break;
         }
             
@@ -501,40 +451,11 @@ int main(int argc, char* argv[]) {
 
             case 34: {
                 SeriesControl seriesControl = selectTimeSeries(data);
-                auto smoothed = seriesControl.movingAverage5();
-                seriesControl.plotIndividualComparison(smoothed);
+                seriesControl.analyzeTrends();
                 break;
             }
 
             case 35: {
-                SeriesControl seriesControl = selectTimeSeries(data);
-                auto smoothed = seriesControl.weightedMovingAverage5();
-                seriesControl.plotIndividualComparison(smoothed);
-                break;
-            }
-
-            case 36: {
-                SeriesControl seriesControl = selectTimeSeries(data);
-                auto smoothed = seriesControl.weightedMovingAverage7();
-                seriesControl.plotIndividualComparison(smoothed);
-                break;
-            }
-
-            case 37: {
-                SeriesControl seriesControl = selectTimeSeries(data);
-                auto smoothed = seriesControl.chronologicalAverage12();
-                seriesControl.plotIndividualComparison(smoothed);
-                break;
-            }
-
-            case 38: {
-                SeriesControl seriesControl = selectTimeSeries(data);
-                auto smoothed = seriesControl.exponentialSmoothing(0.3);
-                seriesControl.plotIndividualComparison(smoothed);
-                break;
-            }
-
-            case 39: {
                 SeriesControl seriesControl = selectTimeSeries(data);
                 auto ma5 = seriesControl.movingAverage5();
                 auto wma5 = seriesControl.weightedMovingAverage5();
@@ -547,7 +468,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            case 40: {
+            case 36: {
                 SeriesControl seriesControl = selectTimeSeries(data);
                 seriesControl.processAnomalies(1.5);
                 auto ma5 = seriesControl.movingAverage5();
@@ -566,7 +487,7 @@ int main(int argc, char* argv[]) {
                 return 0;
 
             default:
-                std::cout << RED_COLOR << "Invalid option! Please choose 0-40.\n" << RESET;
+                std::cout << RED_COLOR << "Invalid option! Please choose 0-36.\n" << RESET;
         }
     }
 }

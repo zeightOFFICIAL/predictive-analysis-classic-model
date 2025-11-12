@@ -29,6 +29,9 @@ public:
     
     static std::vector<double> generateLinearWeights(size_t n);
     static std::vector<double> generateTriangularWeights(size_t n);
+
+    std::pair<bool, double> checkTrendMeanDifferences() const;
+    std::pair<bool, double> checkTrendFosterStewart() const;
 };
 
 #endif

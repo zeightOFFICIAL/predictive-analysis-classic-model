@@ -35,6 +35,8 @@ public:
     void displayComparison(const std::vector<SeriesClass>& smoothedSeries) const;
     void plotAllSeries(const std::vector<SeriesClass>& smoothedSeries) const;
     void plotIndividualComparison(const SeriesClass& smoothedSeries) const;
+
+    void analyzeTrends() const;
     
     
     const SeriesClass& getSeries() const;
