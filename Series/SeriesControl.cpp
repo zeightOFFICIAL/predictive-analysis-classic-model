@@ -190,9 +190,7 @@ void SeriesControl::cleanupDataFiles(const std::vector<std::string>& filenames) 
 void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries) const {
     std::cout << "=== GENERATING COMPARISON PLOT ===" << std::endl;
     
-    
     std::filesystem::create_directories("plots/series");
-    
     
     std::vector<std::string> dataFiles;
     
@@ -207,6 +205,28 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
         dataFiles.push_back(filename);
     }
     
+    std::vector<std::string> residualFiles;
+    auto originalData = series.getData();
+    
+    for (size_t i = 0; i < smoothedSeries.size(); ++i) {
+        const auto& smoothed = smoothedSeries[i];
+        auto smoothedData = smoothed.getData();
+        std::string residualFilename = "plots/series/residual_" + sanitizeFilename(smoothed.getName()) + ".dat";
+        
+        std::ofstream residualFile(residualFilename);
+        if (residualFile.is_open()) {
+            residualFile << "# Residuals: " << smoothed.getName() << std::endl;
+            residualFile << "# Index Date Residual" << std::endl;
+            
+            auto timestamps = series.getTimestamps();
+            for (size_t j = 0; j < originalData.size() && j < smoothedData.size(); ++j) {
+                double residual = originalData[j] - smoothedData[j];
+                residualFile << j << " \"" << timestamps[j] << "\" " << std::fixed << std::setprecision(6) << residual << std::endl;
+            }
+            residualFile.close();
+            residualFiles.push_back(residualFilename);
+        }
+    }
     
     std::string scriptFile = "plots/series/comparison_plot.gnu";
     std::ofstream script(scriptFile);
@@ -220,13 +240,11 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
     script << "set multiplot layout 3,2 title 'Smoothing Methods Comparison'" << std::endl;
     script << std::endl;
     
-    
     script << "set title 'Moving Average (5 points)'" << std::endl;
     script << "plot '" << originalFile << "' using 1:3 with lines lw 2 title 'Original', \\" << std::endl;
     script << "     'plots/series/" << sanitizeFilename(smoothedSeries[0].getName()) << ".dat' using 1:3 with lines lw 2 title '" 
            << smoothedSeries[0].getName() << "'" << std::endl;
     script << std::endl;
-    
     
     script << "set title 'Weighted Moving Average (5 points)'" << std::endl;
     script << "plot '" << originalFile << "' using 1:3 with lines lw 2 title 'Original', \\" << std::endl;
@@ -234,13 +252,11 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
            << smoothedSeries[1].getName() << "'" << std::endl;
     script << std::endl;
     
-    
     script << "set title 'Weighted Moving Average (7 points)'" << std::endl;
     script << "plot '" << originalFile << "' using 1:3 with lines lw 2 title 'Original', \\" << std::endl;
     script << "     'plots/series/" << sanitizeFilename(smoothedSeries[2].getName()) << ".dat' using 1:3 with lines lw 2 title '" 
            << smoothedSeries[2].getName() << "'" << std::endl;
     script << std::endl;
-    
     
     script << "set title 'Chronological Average (12 points)'" << std::endl;
     script << "plot '" << originalFile << "' using 1:3 with lines lw 2 title 'Original', \\" << std::endl;
@@ -248,13 +264,11 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
            << smoothedSeries[3].getName() << "'" << std::endl;
     script << std::endl;
     
-    
     script << "set title 'Exponential Smoothing'" << std::endl;
     script << "plot '" << originalFile << "' using 1:3 with lines lw 2 title 'Original', \\" << std::endl;
     script << "     'plots/series/" << sanitizeFilename(smoothedSeries[4].getName()) << ".dat' using 1:3 with lines lw 2 title '" 
            << smoothedSeries[4].getName() << "'" << std::endl;
     script << std::endl;
-    
     
     script << "set title 'All Methods Comparison'" << std::endl;
     script << "plot '" << originalFile << "' using 1:3 with lines lw 3 title 'Original', \\" << std::endl;
@@ -268,7 +282,6 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
     script << "unset multiplot" << std::endl;
     script.close();
     
-    
     std::string command = "gnuplot \"" + scriptFile + "\"";
     int result = std::system(command.c_str());
     
@@ -278,28 +291,29 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
         std::cerr << "Error: GNU Plot execution failed for multi-panel plot" << std::endl;
     }
     
-    
     std::string overviewScriptFile = "plots/series/overview_plot.gnu";
     std::ofstream overviewScript(overviewScriptFile);
-    overviewScript << "set terminal pngcairo size 1600,900 enhanced font 'Arial,10'" << std::endl;
+    overviewScript << "set terminal pngcairo size 3200,1800 enhanced font 'Arial,12'" << std::endl;
     overviewScript << "set output 'plots/series/smoothing_overview.png'" << std::endl;
-    overviewScript << "set title 'Time Series Overview: " << series.getName() << " - All Smoothing Methods'" << std::endl;
+    overviewScript << "set multiplot layout 2,1 title 'Time Series Overview: " << series.getName() << " - All Smoothing Methods and Residuals'" << std::endl;
+    overviewScript << std::endl;
+    
+    overviewScript << "set title 'All Smoothing Methods Comparison'" << std::endl;
     overviewScript << "set xlabel 'Time Index'" << std::endl;
     overviewScript << "set ylabel 'Price'" << std::endl;
     overviewScript << "set grid" << std::endl;
     overviewScript << "set key outside right top vertical box" << std::endl;
-    overviewScript << "set key spacing 1.2" << std::endl;
-    overviewScript << "set key width -8" << std::endl;
-    overviewScript << "set key font ',9'" << std::endl;
+    overviewScript << "set key spacing 1.5" << std::endl;
+    overviewScript << "set key width -12" << std::endl;
+    overviewScript << "set key font ',10'" << std::endl;
     overviewScript << std::endl;
     
-    
-    overviewScript << "set style line 1 lw 3 lc rgb '#000000' dt 1" << std::endl;  
-    overviewScript << "set style line 2 lw 1 lc rgb '#FF0000' dt 1" << std::endl;  
-    overviewScript << "set style line 3 lw 1 lc rgb '#00FF00' dt 2" << std::endl;  
-    overviewScript << "set style line 4 lw 1 lc rgb '#0000FF' dt 3" << std::endl;  
-    overviewScript << "set style line 5 lw 1 lc rgb '#FF00FF' dt 4" << std::endl;  
-    overviewScript << "set style line 6 lw 1 lc rgb '#FFA500' dt 5" << std::endl;  
+    overviewScript << "set style line 1 lw 4 lc rgb '#000000' dt 1" << std::endl;  // Original - black thick
+    overviewScript << "set style line 2 lw 1 lc rgb '#FF0000' dt 1" << std::endl;  // MA5 - red thin solid
+    overviewScript << "set style line 3 lw 1 lc rgb '#00AA00' dt 1" << std::endl;  // WMA5 - green thin solid
+    overviewScript << "set style line 4 lw 1 lc rgb '#0000FF' dt 1" << std::endl;  // WMA7 - blue thin solid
+    overviewScript << "set style line 5 lw 1 lc rgb '#FF00FF' dt 1" << std::endl;  // CA12 - magenta thin solid
+    overviewScript << "set style line 6 lw 1 lc rgb '#FF8C00' dt 1" << std::endl;  // Exp - orange thin solid
     overviewScript << std::endl;
     
     overviewScript << "plot '" << originalFile << "' using 1:3 with lines ls 1 title 'Original Data', \\" << std::endl;
@@ -313,21 +327,43 @@ void SeriesControl::plotAllSeries(const std::vector<SeriesClass>& smoothedSeries
                    << smoothedSeries[3].getName() << "', \\" << std::endl;
     overviewScript << "     'plots/series/" << sanitizeFilename(smoothedSeries[4].getName()) << ".dat' using 1:3 with lines ls 6 title '" 
                    << smoothedSeries[4].getName() << "'" << std::endl;
+    overviewScript << std::endl;
     
+    overviewScript << "set title 'Residuals (Original - Smoothed)'" << std::endl;
+    overviewScript << "set xlabel 'Time Index'" << std::endl;
+    overviewScript << "set ylabel 'Residual Value'" << std::endl;
+    overviewScript << "set grid" << std::endl;
+    overviewScript << "set key outside right top vertical box" << std::endl;
+    overviewScript << "set key spacing 1.5" << std::endl;
+    overviewScript << "set key width -12" << std::endl;
+    overviewScript << "set key font ',10'" << std::endl;
+    overviewScript << std::endl;
+    
+    overviewScript << "plot 'plots/series/residual_" << sanitizeFilename(smoothedSeries[0].getName()) << ".dat' using 1:3 with lines ls 2 title '" 
+                   << smoothedSeries[0].getName() << " Residuals', \\" << std::endl;
+    overviewScript << "     'plots/series/residual_" << sanitizeFilename(smoothedSeries[1].getName()) << ".dat' using 1:3 with lines ls 3 title '" 
+                   << smoothedSeries[1].getName() << " Residuals', \\" << std::endl;
+    overviewScript << "     'plots/series/residual_" << sanitizeFilename(smoothedSeries[2].getName()) << ".dat' using 1:3 with lines ls 4 title '" 
+                   << smoothedSeries[2].getName() << " Residuals', \\" << std::endl;
+    overviewScript << "     'plots/series/residual_" << sanitizeFilename(smoothedSeries[3].getName()) << ".dat' using 1:3 with lines ls 5 title '" 
+                   << smoothedSeries[3].getName() << " Residuals', \\" << std::endl;
+    overviewScript << "     'plots/series/residual_" << sanitizeFilename(smoothedSeries[4].getName()) << ".dat' using 1:3 with lines ls 6 title '" 
+                   << smoothedSeries[4].getName() << " Residuals'" << std::endl;
+    
+    overviewScript << "unset multiplot" << std::endl;
     overviewScript.close();
-    
     
     std::string overviewCommand = "gnuplot \"" + overviewScriptFile + "\"";
     int overviewResult = std::system(overviewCommand.c_str());
     
     if (overviewResult == 0) {
-        std::cout << "Overview plot saved as: plots/series/smoothing_overview.png" << std::endl;
+        std::cout << "Overview plot with residuals saved as: plots/series/smoothing_overview.png" << std::endl;
     } else {
         std::cerr << "Error: GNU Plot execution failed for overview plot" << std::endl;
     }
     
-    
     cleanupDataFiles(dataFiles);
+    cleanupDataFiles(residualFiles);
     if (std::filesystem::exists(scriptFile)) {
         std::filesystem::remove(scriptFile);
     }
