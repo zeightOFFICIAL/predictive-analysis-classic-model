@@ -16,6 +16,8 @@
         "${workspaceFolder}/Statistics/StatisticsControl.cpp",
         "${workspaceFolder}/Regression/RegressionControl.cpp",
         "${workspaceFolder}/Regression/RegressionClass.cpp",
+        "${workspaceFolder}/Series/SeriesClass.cpp",
+        "${workspaceFolder}/Series/SeriesControl.cpp",
         "-o",
         "${workspaceFolder}/build/analysis.exe"
       ],
