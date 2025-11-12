@@ -56,7 +56,7 @@ std::vector<size_t> SeriesClass::detectAnomaliesIrwin(double criticalValue) cons
     
     std::cout << "=== IRWIN CRITERION DETAILS ===" << std::endl;
     std::cout << "Mean (μ): " << mean << std::endl;
-    std::cout << "Standard Deviation (σ): " << stdDev << std::endl;
+    std::cout << "Standard Deviation (sigma): " << stdDev << std::endl;
     std::cout << "Critical Value: " << criticalValue << std::endl;
     std::cout << "--------------------------------" << std::endl;
     
@@ -70,7 +70,7 @@ std::vector<size_t> SeriesClass::detectAnomaliesIrwin(double criticalValue) cons
         
         if (lambda > criticalValue) {
             anomalies.push_back(i);
-            std::cout << " ← ANOMALY DETECTED";
+            std::cout << " <-- ANOMALY DETECTED";
         }
         std::cout << std::endl;
     }

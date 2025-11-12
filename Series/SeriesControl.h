@@ -14,6 +14,8 @@ private:
     void saveDataToFile(const SeriesClass& series, const std::string& filename) const;
     void cleanupDataFiles(const std::vector<std::string>& filenames) const;
     std::string sanitizeFilename(const std::string& filename) const; 
+    std::string simplifyCommodityName(const std::string& fullName) const;
+    std::string getColorByIndex(size_t index) const;
     
 public:
     SeriesControl(const RecordClass& recordData, const std::string& commodityName);
