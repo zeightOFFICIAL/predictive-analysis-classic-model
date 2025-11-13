@@ -74,10 +74,14 @@ static void displayMenu() {
     std::cout << "34. Analyze trend presence\n";
     std::cout << "35. Compare all smoothing methods\n";
     std::cout << "36. Generate all time series plots\n";
-    std::cout << "37. Time series decomposition" << std::endl;
+    std::cout << "37. Time series decomposition\n";
+    
+    std::cout << "\n" << BOLD << CYAN_COLOR << "========= GROWTH CURVE ANALYSIS ========" << RESET << "\n";
+    std::cout << "38. Analyze growth curve characteristics\n";
+    std::cout << "39. Fit and compare growth curves\n";
     
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-36): ";
+    std::cout << "Enter your choice (0-39): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -210,6 +214,8 @@ static void runTimeSeriesAnalysis(const RecordClass& data) {
     std::cout << "2. Detect and process anomalies\n";
     std::cout << "3. Analyze trend presence\n";
     std::cout << "4. Apply all smoothing methods and generate plots\n";
+    std::cout << "5. Time series decomposition\n";
+    std::cout << "6. Analyze growth curves\n";
     std::cout << "0. Back to main menu\n";
     std::cout << "Enter your choice: ";
     
@@ -246,6 +252,14 @@ static void runTimeSeriesAnalysis(const RecordClass& data) {
             seriesControl.plotAllSeries(smoothedSeries);
             break;
         }
+            
+        case 5:
+            seriesControl.plotDecomposition(365);
+            break;
+            
+        case 6:
+            seriesControl.analyzeGrowthCurves();
+            break;
             
         case 0:
             return;
@@ -485,7 +499,22 @@ int main(int argc, char* argv[]) {
 
             case 37: {
                 SeriesControl seriesControl = selectTimeSeries(data);
-                seriesControl.plotDecomposition(1000); 
+                seriesControl.plotDecomposition(365); 
+                break;
+            }
+
+            case 38: {
+                SeriesControl seriesControl = selectTimeSeries(data);
+                // Вызов нового метода анализа характеристик кривых роста
+                auto& series = seriesControl.getSeries();
+                series.analyzeGrowthCurveCharacteristics();
+                break;
+            }
+
+            case 39: {
+                SeriesControl seriesControl = selectTimeSeries(data);
+                // Вызов нового метода подбора и сравнения кривых роста
+                seriesControl.analyzeGrowthCurves();
                 break;
             }
 
@@ -494,7 +523,7 @@ int main(int argc, char* argv[]) {
                 return 0;
 
             default:
-                std::cout << RED_COLOR << "Invalid option! Please choose 0-36.\n" << RESET;
+                std::cout << RED_COLOR << "Invalid option! Please choose 0-39.\n" << RESET;
         }
     }
 }

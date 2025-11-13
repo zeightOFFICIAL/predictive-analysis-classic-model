@@ -429,3 +429,331 @@ SeriesClass::DecompositionResult SeriesClass::decomposeTimeSeries(int period) co
     
     return result;
 }
+
+// SeriesClass.cpp - добавляем после существующих методов
+
+std::vector<double> SeriesClass::smoothThreePoints() const {
+    std::vector<double> smoothed;
+    if (data.empty()) return smoothed;
+    
+    smoothed.reserve(data.size());
+    
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (i == 0) {
+            // Первая точка: среднее первых двух точек
+            smoothed.push_back((data[0] + data[1]) / 2.0);
+        } else if (i == data.size() - 1) {
+            // Последняя точка: среднее последних двух точек
+            smoothed.push_back((data[data.size()-2] + data[data.size()-1]) / 2.0);
+        } else {
+            // Средняя точка: среднее трёх точек
+            smoothed.push_back((data[i-1] + data[i] + data[i+1]) / 3.0);
+        }
+    }
+    
+    return smoothed;
+}
+
+std::vector<double> SeriesClass::calculateFirstDifferences() const {
+    std::vector<double> differences;
+    if (data.size() < 2) return differences;
+    
+    differences.reserve(data.size() - 1);
+    for (size_t i = 1; i < data.size(); ++i) {
+        differences.push_back(data[i] - data[i-1]);
+    }
+    
+    return differences;
+}
+
+std::vector<double> SeriesClass::calculateSecondDifferences() const {
+    auto firstDiff = calculateFirstDifferences();
+    std::vector<double> secondDiff;
+    if (firstDiff.size() < 2) return secondDiff;
+    
+    secondDiff.reserve(firstDiff.size() - 1);
+    for (size_t i = 1; i < firstDiff.size(); ++i) {
+        secondDiff.push_back(firstDiff[i] - firstDiff[i-1]);
+    }
+    
+    return secondDiff;
+}
+
+std::vector<double> SeriesClass::calculateRelativeFirstDifferences() const {
+    std::vector<double> relative;
+    if (data.size() < 2) return relative;
+    
+    relative.reserve(data.size() - 1);
+    for (size_t i = 1; i < data.size(); ++i) {
+        if (data[i-1] != 0) {
+            relative.push_back((data[i] - data[i-1]) / data[i-1]);
+        } else {
+            relative.push_back(0.0);
+        }
+    }
+    
+    return relative;
+}
+
+std::vector<double> SeriesClass::calculateLogFirstDifferences() const {
+    auto firstDiff = calculateFirstDifferences();
+    std::vector<double> logDiff;
+    
+    for (double diff : firstDiff) {
+        if (diff > 0) {
+            logDiff.push_back(std::log(diff));
+        } else {
+            logDiff.push_back(0.0);
+        }
+    }
+    
+    return logDiff;
+}
+
+std::vector<double> SeriesClass::calculateGompertzIndicator() const {
+    auto relativeDiff = calculateRelativeFirstDifferences();
+    std::vector<double> gompertz;
+    
+    for (size_t i = 0; i < relativeDiff.size() && i < data.size() - 1; ++i) {
+        if (data[i] != 0) {
+            gompertz.push_back(std::log(relativeDiff[i] / data[i]));
+        } else {
+            gompertz.push_back(0.0);
+        }
+    }
+    
+    return gompertz;
+}
+
+std::vector<double> SeriesClass::calculateLogisticIndicator() const {
+    auto relativeDiff = calculateRelativeFirstDifferences();
+    std::vector<double> logistic;
+    
+    for (size_t i = 0; i < relativeDiff.size() && i < data.size() - 1; ++i) {
+        if (data[i] != 0) {
+            double term = relativeDiff[i] / (data[i] * data[i]);
+            logistic.push_back(std::log(std::abs(term)));
+        } else {
+            logistic.push_back(0.0);
+        }
+    }
+    
+    return logistic;
+}
+
+// Метод наименьших квадратов для линейного полинома y = a + b*t
+std::pair<double, double> SeriesClass::fitLinearPolynomial() const {
+    if (data.empty()) return {0.0, 0.0};
+    
+    double sum_t = 0.0, sum_y = 0.0, sum_ty = 0.0, sum_t2 = 0.0;
+    size_t n = data.size();
+    
+    for (size_t t = 0; t < n; ++t) {
+        sum_t += t;
+        sum_y += data[t];
+        sum_ty += t * data[t];
+        sum_t2 += t * t;
+    }
+    
+    double denominator = n * sum_t2 - sum_t * sum_t;
+    if (denominator == 0) return {0.0, 0.0};
+    
+    double b = (n * sum_ty - sum_t * sum_y) / denominator;
+    double a = (sum_y - b * sum_t) / n;
+    
+    return {a, b};
+}
+
+// Метод наименьших квадратов для экспоненциальной кривой y = a * exp(b*t)
+std::pair<double, double> SeriesClass::fitExponential() const {
+    if (data.empty()) return {0.0, 0.0};
+    
+    double sum_t = 0.0, sum_ln_y = 0.0, sum_t_ln_y = 0.0, sum_t2 = 0.0;
+    size_t n = data.size();
+    
+    for (size_t t = 0; t < n; ++t) {
+        if (data[t] > 0) {
+            sum_t += t;
+            sum_ln_y += std::log(data[t]);
+            sum_t_ln_y += t * std::log(data[t]);
+            sum_t2 += t * t;
+        }
+    }
+    
+    double denominator = n * sum_t2 - sum_t * sum_t;
+    if (denominator == 0) return {0.0, 0.0};
+    
+    double b = (n * sum_t_ln_y - sum_t * sum_ln_y) / denominator;
+    double ln_a = (sum_ln_y - b * sum_t) / n;
+    
+    return {std::exp(ln_a), b};
+}
+
+// Метод наименьших квадратов для кривой Гомперца
+std::pair<double, double> SeriesClass::fitGompertz() const {
+    // Упрощённая реализация - в реальности требуется более сложный подход
+    auto indicator = calculateGompertzIndicator();
+    if (indicator.empty()) return {0.0, 0.0};
+    
+    // Линейная аппроксимация показателя Гомперца
+    double sum_t = 0.0, sum_z = 0.0, sum_tz = 0.0, sum_t2 = 0.0;
+    size_t n = indicator.size();
+    
+    for (size_t t = 0; t < n; ++t) {
+        sum_t += t;
+        sum_z += indicator[t];
+        sum_tz += t * indicator[t];
+        sum_t2 += t * t;
+    }
+    
+    double denominator = n * sum_t2 - sum_t * sum_t;
+    if (denominator == 0) return {0.0, 0.0};
+    
+    double b = (n * sum_tz - sum_t * sum_z) / denominator;
+    double a = (sum_z - b * sum_t) / n;
+    
+    return {a, b};
+}
+
+// Метод наименьших квадратов для логистической кривой
+std::pair<double, double> SeriesClass::fitLogistic() const {
+    // Упрощённая реализация
+    auto indicator = calculateLogisticIndicator();
+    if (indicator.empty()) return {0.0, 0.0};
+    
+    double sum_t = 0.0, sum_z = 0.0, sum_tz = 0.0, sum_t2 = 0.0;
+    size_t n = indicator.size();
+    
+    for (size_t t = 0; t < n; ++t) {
+        sum_t += t;
+        sum_z += indicator[t];
+        sum_tz += t * indicator[t];
+        sum_t2 += t * t;
+    }
+    
+    double denominator = n * sum_t2 - sum_t * sum_t;
+    if (denominator == 0) return {0.0, 0.0};
+    
+    double b = (n * sum_tz - sum_t * sum_z) / denominator;
+    double a = (sum_z - b * sum_t) / n;
+    
+    return {a, b};
+}
+
+// Прогнозирование
+std::vector<double> SeriesClass::predictLinear(double a, double b) const {
+    std::vector<double> predictions;
+    predictions.reserve(data.size());
+    
+    for (size_t t = 0; t < data.size(); ++t) {
+        predictions.push_back(a + b * t);
+    }
+    
+    return predictions;
+}
+
+std::vector<double> SeriesClass::predictExponential(double a, double b) const {
+    std::vector<double> predictions;
+    predictions.reserve(data.size());
+    
+    for (size_t t = 0; t < data.size(); ++t) {
+        predictions.push_back(a * std::exp(b * t));
+    }
+    
+    return predictions;
+}
+
+std::vector<double> SeriesClass::predictGompertz(double a, double b) const {
+    std::vector<double> predictions;
+    predictions.reserve(data.size());
+    
+    // Упрощённая реализация кривой Гомперца
+    for (size_t t = 0; t < data.size(); ++t) {
+        predictions.push_back(std::exp(a + b * t));
+    }
+    
+    return predictions;
+}
+
+std::vector<double> SeriesClass::predictLogistic(double a, double b) const {
+    std::vector<double> predictions;
+    predictions.reserve(data.size());
+    
+    // Упрощённая реализация логистической кривой
+    for (size_t t = 0; t < data.size(); ++t) {
+        predictions.push_back(1.0 / (1.0 + std::exp(-(a + b * t))));
+    }
+    
+    return predictions;
+}
+
+void SeriesClass::analyzeGrowthCurveCharacteristics() const {
+    std::cout << "=== ANALYSIS OF GROWTH CURVE CHARACTERISTICS ===" << std::endl;
+    
+    auto firstDiff = calculateFirstDifferences();
+    auto secondDiff = calculateSecondDifferences();
+    auto relativeDiff = calculateRelativeFirstDifferences();
+    auto logFirstDiff = calculateLogFirstDifferences();
+    auto gompertzInd = calculateGompertzIndicator();
+    auto logisticInd = calculateLogisticIndicator();
+    
+    // Вычисляем средние значения характеристик
+    double meanFirstDiff = firstDiff.empty() ? 0.0 : 
+        std::accumulate(firstDiff.begin(), firstDiff.end(), 0.0) / firstDiff.size();
+    
+    double meanSecondDiff = secondDiff.empty() ? 0.0 :
+        std::accumulate(secondDiff.begin(), secondDiff.end(), 0.0) / secondDiff.size();
+    
+    double meanRelativeDiff = relativeDiff.empty() ? 0.0 :
+        std::accumulate(relativeDiff.begin(), relativeDiff.end(), 0.0) / relativeDiff.size();
+    
+    double meanLogFirstDiff = 0.0;
+    int count = 0;
+    for (double val : logFirstDiff) {
+        if (val != 0.0) {
+            meanLogFirstDiff += val;
+            count++;
+        }
+    }
+    meanLogFirstDiff = (count > 0) ? meanLogFirstDiff / count : 0.0;
+    
+    double meanGompertz = 0.0;
+    count = 0;
+    for (double val : gompertzInd) {
+        if (val != 0.0) {
+            meanGompertz += val;
+            count++;
+        }
+    }
+    meanGompertz = (count > 0) ? meanGompertz / count : 0.0;
+    
+    double meanLogistic = 0.0;
+    count = 0;
+    for (double val : logisticInd) {
+        if (val != 0.0) {
+            meanLogistic += val;
+            count++;
+        }
+    }
+    meanLogistic = (count > 0) ? meanLogistic / count : 0.0;
+    
+    std::cout << "Mean First Differences (ΔY_t): " << meanFirstDiff << std::endl;
+    std::cout << "Mean Second Differences (Δ²Y_t): " << meanSecondDiff << std::endl;
+    std::cout << "Mean Relative First Differences (ΔY_t/Y_t): " << meanRelativeDiff << std::endl;
+    std::cout << "Mean Log First Differences (ln ΔY_t): " << meanLogFirstDiff << std::endl;
+    std::cout << "Mean Gompertz Indicator (ln(ΔY_t/Y_t)): " << meanGompertz << std::endl;
+    std::cout << "Mean Logistic Indicator (ln(ΔY_t/Y_t²)): " << meanLogistic << std::endl;
+    
+    // Анализ постоянства характеристик для выбора кривой
+    std::cout << "\n=== GROWTH CURVE SELECTION ===" << std::endl;
+    
+    if (std::abs(meanSecondDiff) < 0.1 * std::abs(meanFirstDiff)) {
+        std::cout << "RECOMMENDATION: Linear Polynomial (constant first differences)" << std::endl;
+    } else if (std::abs(meanRelativeDiff - meanFirstDiff) < 0.1 * std::abs(meanRelativeDiff)) {
+        std::cout << "RECOMMENDATION: Exponential Curve (constant relative growth)" << std::endl;
+    } else if (std::abs(meanGompertz - meanLogistic) < 0.1 * std::abs(meanGompertz)) {
+        std::cout << "RECOMMENDATION: Gompertz Curve" << std::endl;
+    } else {
+        std::cout << "RECOMMENDATION: Logistic Curve" << std::endl;
+    }
+}

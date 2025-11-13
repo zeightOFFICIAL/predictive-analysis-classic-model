@@ -671,3 +671,115 @@ void SeriesControl::plotDecomposition(int period) const {
     }
     std::cout << std::endl;
 }
+
+// SeriesControl.cpp - добавляем новые методы
+
+void SeriesControl::analyzeGrowthCurves() const {
+    std::cout << "=== GROWTH CURVE ANALYSIS ===" << std::endl;
+    
+    // Анализ характеристик для выбора кривой
+    series.analyzeGrowthCurveCharacteristics();
+    
+    // Подгонка различных кривых
+    auto [a_linear, b_linear] = series.fitLinearPolynomial();
+    auto [a_exp, b_exp] = series.fitExponential();
+    auto [a_gomp, b_gomp] = series.fitGompertz();
+    auto [a_log, b_log] = series.fitLogistic();
+    
+    std::cout << "\n=== FITTED PARAMETERS ===" << std::endl;
+    std::cout << "Linear Polynomial: y = " << a_linear << " + " << b_linear << " * t" << std::endl;
+    std::cout << "Exponential Curve: y = " << a_exp << " * exp(" << b_exp << " * t)" << std::endl;
+    std::cout << "Gompertz Curve: parameters a = " << a_gomp << ", b = " << b_gomp << std::endl;
+    std::cout << "Logistic Curve: parameters a = " << a_log << ", b = " << b_log << std::endl;
+    
+    // Прогнозирование
+    auto linear_pred = series.predictLinear(a_linear, b_linear);
+    auto exp_pred = series.predictExponential(a_exp, b_exp);
+    auto gomp_pred = series.predictGompertz(a_gomp, b_gomp);
+    auto log_pred = series.predictLogistic(a_log, b_log);
+    
+    // Построение графиков
+    plotGrowthCurvesComparison(linear_pred, exp_pred, gomp_pred, log_pred);
+}
+
+void SeriesControl::plotGrowthCurvesComparison(const std::vector<double>& linear_pred,
+                                             const std::vector<double>& exp_pred,
+                                             const std::vector<double>& gomp_pred,
+                                             const std::vector<double>& log_pred) const {
+    std::cout << "=== GENERATING GROWTH CURVES COMPARISON PLOT ===" << std::endl;
+    
+    std::filesystem::create_directories("plots/growth_curves");
+    
+    // Сохранение данных
+    std::string originalFile = "plots/growth_curves/original.dat";
+    std::string linearFile = "plots/growth_curves/linear.dat";
+    std::string expFile = "plots/growth_curves/exponential.dat";
+    std::string gompFile = "plots/growth_curves/gompertz.dat";
+    std::string logFile = "plots/growth_curves/logistic.dat";
+    
+    saveGrowthCurveData(series, originalFile, "Original");
+    saveGrowthCurveData(linear_pred, series.getTimestamps(), linearFile, "Linear");
+    saveGrowthCurveData(exp_pred, series.getTimestamps(), expFile, "Exponential");
+    saveGrowthCurveData(gomp_pred, series.getTimestamps(), gompFile, "Gompertz");
+    saveGrowthCurveData(log_pred, series.getTimestamps(), logFile, "Logistic");
+    
+    // Создание скрипта GNUplot
+    std::string scriptFile = "plots/growth_curves/growth_comparison.gnu";
+    std::ofstream script(scriptFile);
+    
+    script << "set terminal pngcairo size 1600,1200 enhanced font 'Arial,12'" << std::endl;
+    script << "set output 'plots/growth_curves/growth_curves_comparison.png'" << std::endl;
+    script << "set title 'Growth Curves Comparison: " << series.getName() << "'" << std::endl;
+    script << "set xlabel 'Time Index'" << std::endl;
+    script << "set ylabel 'Value'" << std::endl;
+    script << "set grid" << std::endl;
+    script << "set key outside center top horizontal" << std::endl;
+    script << std::endl;
+    
+    script << "plot '" << originalFile << "' using 1:3 with lines lw 3 title 'Original Data', \\" << std::endl;
+    script << "     '" << linearFile << "' using 1:3 with lines lw 2 title 'Linear Polynomial', \\" << std::endl;
+    script << "     '" << expFile << "' using 1:3 with lines lw 2 title 'Exponential', \\" << std::endl;
+    script << "     '" << gompFile << "' using 1:3 with lines lw 2 title 'Gompertz', \\" << std::endl;
+    script << "     '" << logFile << "' using 1:3 with lines lw 2 title 'Logistic'" << std::endl;
+    
+    script.close();
+    
+    // Запуск GNUplot
+    std::string command = "gnuplot \"" + scriptFile + "\"";
+    int result = std::system(command.c_str());
+    
+    if (result == 0) {
+        std::cout << "Growth curves comparison plot saved as: plots/growth_curves/growth_curves_comparison.png" << std::endl;
+    } else {
+        std::cerr << "Error: GNU Plot execution failed for growth curves comparison" << std::endl;
+    }
+    
+    // Очистка временных файлов
+    cleanupDataFiles({originalFile, linearFile, expFile, gompFile, logFile, scriptFile});
+}
+
+void SeriesControl::saveGrowthCurveData(const std::vector<double>& values, 
+                                      const std::vector<std::string>& timestamps,
+                                      const std::string& filename, 
+                                      const std::string& name) const {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error: Cannot create file " << filename << std::endl;
+        return;
+    }
+    
+    file << "# " << name << std::endl;
+    file << "# Index Date Value" << std::endl;
+    
+    for (size_t i = 0; i < values.size() && i < timestamps.size(); ++i) {
+        file << i << " \"" << timestamps[i] << "\" " << std::fixed << std::setprecision(6) << values[i] << std::endl;
+    }
+    
+    file.close();
+}
+
+void SeriesControl::saveGrowthCurveData(const SeriesClass& series, 
+                                      const std::string& filename, 
+                                      const std::string& name) const {
+    saveGrowthCurveData(series.getData(), series.getTimestamps(), filename, name);
+}
