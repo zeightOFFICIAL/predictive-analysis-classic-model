@@ -485,7 +485,7 @@ int main(int argc, char* argv[]) {
 
             case 37: {
                 SeriesControl seriesControl = selectTimeSeries(data);
-                seriesControl.plotDecomposition(365); 
+                seriesControl.plotDecomposition(1000); 
                 break;
             }
 
