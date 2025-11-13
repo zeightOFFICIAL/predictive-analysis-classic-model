@@ -216,39 +216,47 @@ std::pair<bool, double> SeriesClass::checkTrendMeanDifferences() const {
     if (data.size() < 3) {
         return {false, 0.0};
     }
-    
-    size_t splitPoint = data.size() / 2;
-    
+
+    size_t n = data.size();
+    size_t splitPoint = n / 2;
+    size_t n1 = splitPoint;
+    size_t n2 = n - splitPoint;
+
     double mean1 = 0.0, mean2 = 0.0;
-    
-    for (size_t i = 0; i < splitPoint; ++i) {
-        mean1 += data[i];
-    }
-    mean1 /= splitPoint;
-    
-    for (size_t i = splitPoint; i < data.size(); ++i) {
-        mean2 += data[i];
-    }
-    mean2 /= (data.size() - splitPoint);
-    
+    for (size_t i = 0; i < n1; ++i) mean1 += data[i];
+    mean1 /= n1;
+    for (size_t i = splitPoint; i < n; ++i) mean2 += data[i];
+    mean2 /= n2;
+
     double var1 = 0.0, var2 = 0.0;
-    
-    for (size_t i = 0; i < splitPoint; ++i) {
-        var1 += (data[i] - mean1) * (data[i] - mean1);
-    }
-    var1 /= (splitPoint - 1);
-    
-    for (size_t i = splitPoint; i < data.size(); ++i) {
-        var2 += (data[i] - mean2) * (data[i] - mean2);
-    }
-    var2 /= (data.size() - splitPoint - 1);
-    
-    double t_statistic = (mean1 - mean2) / std::sqrt(var1/splitPoint + var2/(data.size() - splitPoint));
-    
-    double critical_value = 1.96;
-    
-    bool has_trend = std::abs(t_statistic) > critical_value;
-    
+    for (size_t i = 0; i < n1; ++i) var1 += (data[i] - mean1) * (data[i] - mean1);
+    var1 /= (n1 - 1);
+    for (size_t i = splitPoint; i < n; ++i) var2 += (data[i] - mean2) * (data[i] - mean2);
+    var2 /= (n2 - 1);
+
+    double t_statistic = (mean1 - mean2) / std::sqrt(var1 / n1 + var2 / n2);
+
+    double F_statistic = (var1 > var2) ? var1 / var2 : var2 / var1;
+    double df1 = n1 - 1.0;
+    double df2 = n2 - 1.0;
+
+    double z = 1.96;
+    double f_critical = std::exp(z * std::sqrt(2.0 * (1.0 / df1 + 1.0 / df2)));
+
+    double t_critical = 1.96;
+    bool has_trend = std::abs(t_statistic) > t_critical;
+    bool variance_diff = F_statistic > f_critical;
+
+    std::cout << "First half mean: " << mean1 << std::endl;
+    std::cout << "Second half mean: " << mean2 << std::endl;
+    std::cout << "First half variance: " << var1 << std::endl;
+    std::cout << "Second half variance: " << var2 << std::endl;
+    std::cout << "F-statistic (variance comparison): " << F_statistic << std::endl;
+    std::cout << "F critical value (alpha=0.05): " << f_critical << std::endl;
+    std::cout << "T-statistic: " << t_statistic << std::endl;
+    std::cout << "Critical value (alpha=0.05): +/- " << t_critical << std::endl;
+    std::cout << "Variance difference: " << (variance_diff ? "YES" : "NO") << std::endl;
+
     return {has_trend, t_statistic};
 }
 
@@ -257,48 +265,46 @@ std::pair<bool, double> SeriesClass::checkTrendFosterStewart() const {
         return {false, 0.0};
     }
 
+    size_t n = data.size();
     double m_i = data[0];
-    double M_i = data[0]; 
-    
-    int u = 0;
-    int d = 0; 
-    int s = 0; 
-    
-    for (size_t i = 1; i < data.size(); ++i) {
+    double M_i = data[0];
+    int u = 0, d = 0;
+
+    for (size_t i = 1; i < n; ++i) {
         if (data[i] > M_i) {
-            u++;
+            ++u;
             M_i = data[i];
         } else if (data[i] < m_i) {
-            d++;
+            ++d;
             m_i = data[i];
-        } else {
-            s++;
         }
     }
-    
-    double L = u + d;
-    double T = u - d;
-    
-    if (data.size() > 25) {
-        double n = static_cast<double>(data.size());
-        double mean_L = (2.0 * std::log(n) - 3.4253) / 1.5;
-        double var_L = (2.0 * std::log(n) - 1.9072) / 2.25;
-        
-        double mean_T = 0.0;
-        double var_T = (2.0 * std::log(n) - 1.9072) / 2.25;
-        
-        double z_L = (L - mean_L) / std::sqrt(var_L);
-        double z_T = (T - mean_T) / std::sqrt(var_T);
-        
-        double critical_value = 1.96;
-        
-        bool has_trend = (std::abs(z_L) > critical_value) || (std::abs(z_T) > critical_value);
-        
-        return {has_trend, std::max(std::abs(z_L), std::abs(z_T))};
-    } else {
-        double expected_L = 2.0 * std::log(static_cast<double>(data.size()));
-        bool has_trend = std::abs(L - expected_L) > expected_L * 0.5;
-        
-        return {has_trend, std::abs(T)};
+
+    double S = static_cast<double>(u + d);
+    double D = static_cast<double>(u - d);
+
+    double E_S = 0.0;
+    double Var_S = 0.0;
+    for (size_t i = 1; i <= n; ++i) {
+        E_S += 2.0 / i;
+        Var_S += 4.0 / i - 8.0 / (i * i);
     }
+    E_S -= 1.0;
+    Var_S = std::max(Var_S, 1e-9);
+
+    double ts = (S - E_S) / std::sqrt(Var_S);
+    double td = D / std::sqrt(Var_S);
+
+    double critical_value = 1.96;
+    bool has_trend = (std::abs(ts) > critical_value) || (std::abs(td) > critical_value);
+
+    std::cout << "S (trend score): " << S << std::endl;
+    std::cout << "D (difference score): " << D << std::endl;
+    std::cout << "ts (t-statistic for S): " << ts << std::endl;
+    std::cout << "td (t-statistic for D): " << td << std::endl;
+    std::cout << "New maxima (u): " << u << std::endl;
+    std::cout << "New minima (d): " << d << std::endl;
+    std::cout << "Critical value (alpha=0.05): +/- " << critical_value << std::endl;
+
+    return {has_trend, std::max(std::abs(ts), std::abs(td))};
 }

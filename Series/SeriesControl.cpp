@@ -482,22 +482,18 @@ void SeriesControl::analyzeTrends() const {
     std::cout << "Series: " << series.getName() << std::endl;
     std::cout << "Number of points: " << series.size() << std::endl;
     
+    std::cout << "\n1. MEAN DIFFERENCES METHOD:" << std::endl;
     auto [has_trend_mean, t_statistic] = series.checkTrendMeanDifferences();
     
-    std::cout << "\n1. MEAN DIFFERENCES METHOD:" << std::endl;
-    std::cout << "T-statistic: " << t_statistic << std::endl;
-    std::cout << "Critical value (α=0.05): ±1.96" << std::endl;
     std::cout << "Trend detected: " << (has_trend_mean ? "YES" : "NO") << std::endl;
     
     if (has_trend_mean) {
         std::cout << "Trend direction: " << (t_statistic > 0 ? "DECREASING" : "INCREASING") << std::endl;
     }
     
+    std::cout << "\n2. FOSTER-STEWART METHOD:" << std::endl;
     auto [has_trend_foster, foster_statistic] = series.checkTrendFosterStewart();
     
-    std::cout << "\n2. FOSTER-STEWART METHOD:" << std::endl;
-    std::cout << "Test statistic: " << foster_statistic << std::endl;
-    std::cout << "Critical value (α=0.05): ±1.96" << std::endl;
     std::cout << "Trend detected: " << (has_trend_foster ? "YES" : "NO") << std::endl;
     
     std::cout << "\n=== FINAL CONCLUSION ===" << std::endl;
