@@ -40,6 +40,8 @@ public:
     
     
     const SeriesClass& getSeries() const;
+
+    void plotDecomposition(int period = 12) const;
 };
 
 #endif

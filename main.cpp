@@ -74,6 +74,7 @@ static void displayMenu() {
     std::cout << "34. Analyze trend presence\n";
     std::cout << "35. Compare all smoothing methods\n";
     std::cout << "36. Generate all time series plots\n";
+    std::cout << "37. Time series decomposition" << std::endl;
     
     std::cout << "\n0. Exit program\n";
     std::cout << "Enter your choice (0-36): ";
@@ -479,6 +480,12 @@ int main(int argc, char* argv[]) {
                 
                 std::vector<SeriesClass> smoothedSeries = {ma5, wma5, wma7, ca12, expSmooth};
                 seriesControl.plotAllSeries(smoothedSeries);
+                break;
+            }
+
+            case 37: {
+                SeriesControl seriesControl = selectTimeSeries(data);
+                seriesControl.plotDecomposition(365); 
                 break;
             }
 

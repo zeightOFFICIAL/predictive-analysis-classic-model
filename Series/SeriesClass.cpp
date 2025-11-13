@@ -308,3 +308,149 @@ std::pair<bool, double> SeriesClass::checkTrendFosterStewart() const {
 
     return {has_trend, std::max(std::abs(ts), std::abs(td))};
 }
+
+// SeriesClass.cpp
+SeriesClass::DecompositionResult SeriesClass::decomposeTimeSeries(int period) const {
+    DecompositionResult result;
+    size_t n = data.size();
+    
+    if (n < period * 2) {
+        throw std::invalid_argument("Series too short for decomposition");
+    }
+    
+    // Инициализация всех векторов
+    result.original = data;
+    result.preliminaryTrend.resize(n, 0.0);
+    result.primaryTrend.resize(n, 0.0);
+    result.secondaryTrend.resize(n, 0.0);
+    result.finalTrend.resize(n, 0.0);
+    result.preliminarySeasonal.resize(n, 0.0);
+    result.primarySeasonal.resize(n, 0.0);
+    result.secondarySeasonal.resize(n, 0.0);
+    result.finalSeasonal.resize(n, 0.0);
+    result.preliminaryResidual.resize(n, 0.0);
+    result.primaryResidual.resize(n, 0.0);
+    result.secondaryResidual.resize(n, 0.0);
+    result.finalResidual.resize(n, 0.0);
+    
+    // Для месячных данных за 25 лет (2000-2025) правильный период = 12 месяцев
+    // Но если у нас дневные данные, то период должен быть 365/12 и т.д.
+    
+    std::cout << "Decomposition info: " << n << " points, period = " << period << std::endl;
+    
+    // 1. ВЫЧИСЛЯЕМ ТРЕНДЫ РАЗНЫМИ МЕТОДАМИ
+    
+    // Предварительный тренд - простое MA с окном 30
+    int window1 = 30;
+    for (size_t i = 0; i < n; ++i) {
+        size_t start = (i < window1/2) ? 0 : i - window1/2;
+        size_t end = std::min(start + window1, n);
+        double sum = 0.0;
+        size_t count = 0;
+        for (size_t j = start; j < end; ++j) {
+            sum += data[j];
+            count++;
+        }
+        result.preliminaryTrend[i] = (count > 0) ? sum / count : data[i];
+    }
+    
+    // Первичный тренд - WMA7
+    auto weights7 = generateLinearWeights(7);
+    auto wma7Data = weightedMovingAverage(weights7);
+    if (wma7Data.size() == n) {
+        result.primaryTrend = wma7Data;
+    } else {
+        result.primaryTrend = result.preliminaryTrend;
+    }
+    
+    // Финальный тренд - центрированное MA с окном = period (для годовой сезонности)
+    int trendWindow = period;
+    for (size_t i = 0; i < n; ++i) {
+        int halfWindow = trendWindow / 2;
+        int start = static_cast<int>(i) - halfWindow;
+        int end = static_cast<int>(i) + halfWindow + (trendWindow % 2);
+        
+        // Корректируем границы
+        if (start < 0) start = 0;
+        if (end > static_cast<int>(n)) end = n;
+        
+        double sum = 0.0;
+        int count = 0;
+        for (int j = start; j < end; ++j) {
+            sum += data[j];
+            count++;
+        }
+        result.finalTrend[i] = (count > 0) ? sum / count : data[i];
+    }
+    
+    // Вторичный тренд = финальный тренд
+    result.secondaryTrend = result.finalTrend;
+    
+    // 2. ВЫЧИСЛЯЕМ СЕЗОННУЮ КОМПОНЕНТУ
+    
+    // Детрендированный ряд
+    std::vector<double> detrended(n, 0.0);
+    for (size_t i = 0; i < n; ++i) {
+        detrended[i] = data[i] - result.finalTrend[i];
+    }
+    
+    // Для длинного ряда (5100+ точек) используем более сложный подход
+    // Группируем по позициям в периоде
+    std::vector<std::vector<double>> seasonalGroups(period);
+    for (size_t i = 0; i < n; ++i) {
+        int seasonIndex = i % period;
+        seasonalGroups[seasonIndex].push_back(detrended[i]);
+    }
+    
+    // Вычисляем сезонный паттерн как медиану для каждой позиции
+    std::vector<double> seasonalPattern(period, 0.0);
+    for (int i = 0; i < period; ++i) {
+        if (!seasonalGroups[i].empty()) {
+            // Используем медиану для устойчивости к выбросам
+            std::vector<double> sorted = seasonalGroups[i];
+            std::sort(sorted.begin(), sorted.end());
+            size_t mid = sorted.size() / 2;
+            if (sorted.size() % 2 == 0) {
+                seasonalPattern[i] = (sorted[mid-1] + sorted[mid]) / 2.0;
+            } else {
+                seasonalPattern[i] = sorted[mid];
+            }
+        }
+    }
+    
+    // Нормализация сезонного паттерна (сумма за период = 0)
+    double seasonalSum = std::accumulate(seasonalPattern.begin(), seasonalPattern.end(), 0.0);
+    double adjustment = seasonalSum / period;
+    for (int i = 0; i < period; ++i) {
+        seasonalPattern[i] -= adjustment;
+    }
+    
+    // Заполняем сезонные компоненты
+    for (size_t i = 0; i < n; ++i) {
+        int seasonIndex = i % period;
+        result.finalSeasonal[i] = seasonalPattern[seasonIndex];
+        result.secondarySeasonal[i] = result.finalSeasonal[i];
+    }
+    
+    // 3. ВЫЧИСЛЯЕМ ОСТАТКИ
+    
+    for (size_t i = 0; i < n; ++i) {
+        result.finalResidual[i] = data[i] - result.finalTrend[i] - result.finalSeasonal[i];
+        result.secondaryResidual[i] = result.finalResidual[i];
+        
+        // Для других компонентов
+        result.preliminarySeasonal[i] = data[i] - result.preliminaryTrend[i];
+        result.primarySeasonal[i] = data[i] - result.primaryTrend[i];
+        
+        result.preliminaryResidual[i] = data[i] - (result.preliminaryTrend[i] + result.preliminarySeasonal[i]);
+        result.primaryResidual[i] = data[i] - (result.primaryTrend[i] + result.primarySeasonal[i]);
+    }
+    
+    // Анализ результатов
+    std::cout << "Seasonal pattern statistics:" << std::endl;
+    auto minMax = std::minmax_element(seasonalPattern.begin(), seasonalPattern.end());
+    std::cout << "Range: [" << *minMax.first << ", " << *minMax.second << "]" << std::endl;
+    std::cout << "Amplitude: " << (*minMax.second - *minMax.first) << std::endl;
+    
+    return result;
+}

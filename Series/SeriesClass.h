@@ -32,6 +32,24 @@ public:
 
     std::pair<bool, double> checkTrendMeanDifferences() const;
     std::pair<bool, double> checkTrendFosterStewart() const;
+
+    struct DecompositionResult {
+        std::vector<double> original;
+        std::vector<double> preliminaryTrend;
+        std::vector<double> primaryTrend;
+        std::vector<double> secondaryTrend;
+        std::vector<double> finalTrend;
+        std::vector<double> preliminarySeasonal;
+        std::vector<double> primarySeasonal;
+        std::vector<double> secondarySeasonal;
+        std::vector<double> finalSeasonal;
+        std::vector<double> preliminaryResidual;
+        std::vector<double> primaryResidual;
+        std::vector<double> secondaryResidual;
+        std::vector<double> finalResidual;
+    };
+
+    DecompositionResult decomposeTimeSeries(int period = 365) const;
 };
 
 #endif

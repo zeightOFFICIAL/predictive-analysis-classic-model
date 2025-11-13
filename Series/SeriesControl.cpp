@@ -506,3 +506,159 @@ void SeriesControl::analyzeTrends() const {
     }
     std::cout << "=================================" << std::endl << std::endl;
 }
+
+void SeriesControl::plotDecomposition(int period) const {
+    std::cout << "=== TIME SERIES DECOMPOSITION ===" << std::endl;
+    std::cout << "Series: " << series.getName() << std::endl;
+    std::cout << "Number of points: " << series.size() << std::endl;
+    std::cout << "Period: " << period << std::endl;
+    
+    auto decomposition = series.decomposeTimeSeries(period);
+    
+    std::filesystem::create_directories("plots/decomposition");
+    
+    // Сохраняем данные для построения графиков
+    std::vector<std::string> dataFiles;
+    
+    // 1. Данные для трендов - ВСЕ ЛИНИИ СПЛОШНЫЕ
+    std::string trendFile = "plots/decomposition/trend.dat";
+    std::ofstream trend(trendFile);
+    trend << "# Index Original PreliminaryTrend PrimaryTrend FinalTrend" << std::endl;
+    for (size_t i = 0; i < decomposition.original.size(); ++i) {
+        trend << i << " " << std::fixed << std::setprecision(6) 
+              << decomposition.original[i] << " "
+              << decomposition.preliminaryTrend[i] << " "
+              << decomposition.primaryTrend[i] << " "
+              << decomposition.finalTrend[i] << std::endl;
+    }
+    trend.close();
+    dataFiles.push_back(trendFile);
+    
+    // 2. Данные для сезонных компонент
+    std::string seasonalFile = "plots/decomposition/seasonal.dat";
+    std::ofstream seasonal(seasonalFile);
+    seasonal << "# Index FinalSeasonal" << std::endl;
+    for (size_t i = 0; i < decomposition.original.size(); ++i) {
+        seasonal << i << " " << std::fixed << std::setprecision(6) 
+                 << decomposition.finalSeasonal[i] << std::endl;
+    }
+    seasonal.close();
+    dataFiles.push_back(seasonalFile);
+    
+    // 3. Данные для остатков
+    std::string residualFile = "plots/decomposition/residual.dat";
+    std::ofstream residual(residualFile);
+    residual << "# Index FinalResidual" << std::endl;
+    for (size_t i = 0; i < decomposition.original.size(); ++i) {
+        residual << i << " " << std::fixed << std::setprecision(6) 
+                 << decomposition.finalResidual[i] << std::endl;
+    }
+    residual.close();
+    dataFiles.push_back(residualFile);
+    
+    // Создаем скрипт для GNUplot
+    std::string scriptFile = "plots/decomposition/decomposition_plot.gnu";
+    std::ofstream script(scriptFile);
+    
+    script << "set terminal pngcairo size 7200,5400 enhanced font 'Arial,20'" << std::endl;
+    script << "set output 'plots/decomposition/time_series_decomposition.png'" << std::endl;
+    script << "set encoding utf8" << std::endl;
+    script << "set multiplot layout 3,1 title 'Time Series Decomposition: " << series.getName() << " (Y_t = U_t + V_t + ε_t)'" << std::endl;
+    script << "set lmargin 15" << std::endl;
+    script << "set rmargin 15" << std::endl;
+    script << "set tmargin 5" << std::endl;
+    script << "set bmargin 5" << std::endl;
+    script << std::endl;
+    
+    // ГРАФИК 1: Исходный ряд и тренды - ВСЕ ЛИНИИ СПЛОШНЫЕ
+    script << "set title '1. Original Series and Trend Components' font 'Arial,28'" << std::endl;
+    script << "set xlabel 'Time Index' font 'Arial,24'" << std::endl;
+    script << "set ylabel 'Value' font 'Arial,24'" << std::endl;
+    script << "set grid linecolor '#DDDDDD' linewidth 0.5" << std::endl;
+    script << "set key outside top center horizontal font 'Arial,20'" << std::endl;
+    script << "set key spacing 2" << std::endl;
+    script << "set yrange [*:*]" << std::endl;
+    script << "set linetype 1 lw 1.0 lc rgb '#000000'  # Original - black solid" << std::endl;
+    script << "set linetype 2 lw 1.0 lc rgb '#FF0000'  # Preliminary - red solid" << std::endl;
+    script << "set linetype 3 lw 1.0 lc rgb '#00AA00'  # Primary - green solid" << std::endl;
+    script << "set linetype 4 lw 2.0 lc rgb '#FF8C00'  # Final - orange solid" << std::endl;
+    script << "plot '" << trendFile << "' using 1:2 with lines linetype 1 title 'Original (Y_t)', \\" << std::endl;
+    script << "     '" << trendFile << "' using 1:3 with lines linetype 2 title 'Preliminary Trend (MA30)', \\" << std::endl;
+    script << "     '" << trendFile << "' using 1:4 with lines linetype 3 title 'Primary Trend (WMA7)', \\" << std::endl;
+    script << "     '" << trendFile << "' using 1:5 with lines linetype 4 title 'Final Trend (Centered MA)'" << std::endl;
+    script << std::endl;
+    
+    // ГРАФИК 2: Сезонные компоненты
+    script << "set title '2. Seasonal Component (V_t)' font 'Arial,28'" << std::endl;
+    script << "set xlabel 'Time Index' font 'Arial,24'" << std::endl;
+    script << "set ylabel 'Seasonal Value' font 'Arial,24'" << std::endl;
+    script << "set grid linecolor '#DDDDDD' linewidth 0.5" << std::endl;
+    script << "set key outside top center horizontal font 'Arial,20'" << std::endl;
+    script << "set key spacing 2" << std::endl;
+    script << "set yrange [*:*]" << std::endl;
+    script << "set linetype 5 lw 1.5 lc rgb '#0000FF'  # Seasonal - blue solid" << std::endl;
+    script << "plot '" << seasonalFile << "' using 1:2 with lines linetype 5 title 'Final Seasonal (V_t)'" << std::endl;
+    script << std::endl;
+    
+    // ГРАФИК 3: Остатки
+    script << "set title '3. Residual Component (ε_t)' font 'Arial,28'" << std::endl;
+    script << "set xlabel 'Time Index' font 'Arial,24'" << std::endl;
+    script << "set ylabel 'Residual Value' font 'Arial,24'" << std::endl;
+    script << "set grid linecolor '#DDDDDD' linewidth 0.5" << std::endl;
+    script << "set key outside top center horizontal font 'Arial,20'" << std::endl;
+    script << "set key spacing 2" << std::endl;
+    script << "set yrange [*:*]" << std::endl;
+    script << "set linetype 6 lw 1.0 lc rgb '#8B4513'  # Residual - brown solid" << std::endl;
+    script << "plot '" << residualFile << "' using 1:2 with lines linetype 6 title 'Final Residual (ε_t)'" << std::endl;
+    script << std::endl;
+    
+    script << "unset multiplot" << std::endl;
+    script.close();
+    
+    // Запускаем GNUplot
+    std::string command = "gnuplot \"" + scriptFile + "\"";
+    int result = std::system(command.c_str());
+    
+    if (result == 0) {
+        std::cout << "Decomposition plot saved as: plots/decomposition/time_series_decomposition.png" << std::endl;
+        std::cout << "Resolution: 7200x5400 pixels" << std::endl;
+        std::cout << "All lines are SOLID" << std::endl;
+    } else {
+        std::cerr << "Error: GNU Plot execution failed for decomposition plot" << std::endl;
+    }
+    
+    // Очистка временных файлов
+    cleanupDataFiles(dataFiles);
+    if (std::filesystem::exists(scriptFile)) {
+        std::filesystem::remove(scriptFile);
+    }
+    
+    // Детальный анализ сезонности
+    std::cout << "\n=== SEASONAL COMPONENT ANALYSIS ===" << std::endl;
+    
+    // Анализируем только уникальные значения сезонного паттерна
+    std::vector<double> uniqueSeasonal;
+    for (int i = 0; i < period; ++i) {
+        uniqueSeasonal.push_back(decomposition.finalSeasonal[i]);
+    }
+    
+    auto [minVal, maxVal] = std::minmax_element(uniqueSeasonal.begin(), uniqueSeasonal.end());
+    double mean = std::accumulate(uniqueSeasonal.begin(), uniqueSeasonal.end(), 0.0) / period;
+    
+    std::cout << "Seasonal pattern has " << period << " unique values" << std::endl;
+    std::cout << "Range: [" << *minVal << ", " << *maxVal << "]" << std::endl;
+    std::cout << "Amplitude: " << (*maxVal - *minVal) << std::endl;
+    std::cout << "Mean: " << mean << std::endl;
+    
+    // Если амплитуда слишком маленькая, возможно неправильный период
+    if (std::abs(*maxVal - *minVal) < 0.1) {
+        std::cout << "WARNING: Seasonal amplitude is very small. Consider adjusting period." << std::endl;
+    }
+    
+    // Выводим первые несколько значений сезонного паттерна
+    std::cout << "First 10 seasonal values: ";
+    for (int i = 0; i < std::min(10, period); ++i) {
+        std::cout << uniqueSeasonal[i] << " ";
+    }
+    std::cout << std::endl;
+}
