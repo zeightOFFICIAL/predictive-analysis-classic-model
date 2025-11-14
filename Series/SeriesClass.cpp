@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <iterator>
 #include <vector>
+#include <sstream>
 
 SeriesClass::SeriesClass(const std::vector<double>& values, 
                        const std::vector<std::string>& times, 
@@ -1006,4 +1007,218 @@ std::vector<double> SeriesClass::predictPolynomial3(const std::vector<double>& c
     }
     
     return predictions;
+}
+
+// В SeriesClass.cpp реализуем:
+
+double SeriesClass::calculateSkewness() const {
+    if (data.size() < 3) return 0.0;
+    
+    double mean = std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+    double sum3 = 0.0, sum2 = 0.0;
+    
+    for (double value : data) {
+        double diff = value - mean;
+        sum3 += diff * diff * diff;
+        sum2 += diff * diff;
+    }
+    
+    double variance = sum2 / (data.size() - 1);
+    if (variance == 0) return 0.0;
+    
+    return (sum3 / data.size()) / std::pow(variance, 1.5);
+}
+
+double SeriesClass::calculateKurtosis() const {
+    if (data.size() < 4) return 0.0;
+    
+    double mean = std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+    double sum4 = 0.0, sum2 = 0.0;
+    
+    for (double value : data) {
+        double diff = value - mean;
+        sum4 += diff * diff * diff * diff;
+        sum2 += diff * diff;
+    }
+    
+    double variance = sum2 / (data.size() - 1);
+    if (variance == 0) return 0.0;
+    
+    return (sum4 / data.size()) / (variance * variance) - 3.0;
+}
+
+double SeriesClass::calculateRSStatistic() const {
+    if (data.size() < 2) return 0.0;
+    
+    double mean = std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+    double max = *std::max_element(data.begin(), data.end());
+    double min = *std::min_element(data.begin(), data.end());
+    
+    double sumSq = 0.0;
+    for (double value : data) {
+        sumSq += (value - mean) * (value - mean);
+    }
+    double stdDev = std::sqrt(sumSq / (data.size() - 1));
+    
+    if (stdDev == 0) return 0.0;
+    
+    return (max - min) / stdDev;
+}
+
+double SeriesClass::calculateDurbinWatson() const {
+    if (data.size() < 3) return 0.0;
+    
+    double numerator = 0.0;
+    for (size_t i = 1; i < data.size(); ++i) {
+        numerator += (data[i] - data[i-1]) * (data[i] - data[i-1]);
+    }
+    
+    double denominator = 0.0;
+    for (double value : data) {
+        denominator += value * value;
+    }
+    
+    if (denominator == 0) return 0.0;
+    
+    return numerator / denominator;
+}
+
+std::pair<size_t, bool> SeriesClass::analyzeTurningPoints() const {
+    if (data.size() < 3) return {0, 0};
+    
+    size_t turningPoints = 0;
+    for (size_t i = 1; i < data.size() - 1; ++i) {
+        if ((data[i] > data[i-1] && data[i] > data[i+1]) || 
+            (data[i] < data[i-1] && data[i] < data[i+1])) {
+            turningPoints++;
+        }
+    }
+    
+    double expected = 2.0 * (data.size() - 2) / 3.0;
+    double variance = (16.0 * data.size() - 29.0) / 90.0;
+    double statistic = std::abs(turningPoints - expected) / std::sqrt(variance);
+    
+    bool isRandom = statistic < 1.96; // для α=0.05
+    
+    return { turningPoints, isRandom };
+}
+
+std::pair<size_t, bool> SeriesClass::analyzeSeriesTest() const {
+    if (data.size() < 2) return {0, 0};
+    
+    double median = 0.0;
+    std::vector<double> sorted = data;
+    std::sort(sorted.begin(), sorted.end());
+    if (sorted.size() % 2 == 0) {
+        median = (sorted[sorted.size()/2 - 1] + sorted[sorted.size()/2]) / 2.0;
+    } else {
+        median = sorted[sorted.size()/2];
+    }
+    
+    // Преобразуем в последовательность знаков
+    std::vector<int> signs;
+    for (double value : data) {
+        signs.push_back(value > median ? 1 : -1);
+    }
+    
+    // Считаем серии
+    size_t seriesCount = 1;
+    for (size_t i = 1; i < signs.size(); ++i) {
+        if (signs[i] != signs[i-1]) {
+            seriesCount++;
+        }
+    }
+    
+    // Проверяем по критерию
+    size_t n1 = std::count(signs.begin(), signs.end(), 1);
+    size_t n2 = signs.size() - n1;
+    
+    double expected = 1.0 + 2.0 * n1 * n2 / (n1 + n2);
+    double variance = 2.0 * n1 * n2 * (2.0 * n1 * n2 - n1 - n2) / 
+                     ((n1 + n2) * (n1 + n2) * (n1 + n2 - 1));
+    
+    double statistic = std::abs(seriesCount - expected) / std::sqrt(variance);
+    bool isRandom = statistic < 1.96; // для α=0.05
+    
+    return {seriesCount, isRandom};
+}
+
+SeriesClass::ResidualAnalysisResult SeriesClass::analyzeResiduals() const {
+    ResidualAnalysisResult result;
+    
+    if (data.empty()) {
+        result.conclusion = "No data for analysis";
+        return result;
+    }
+    
+    // 1. Проверка случайности (критерий пиков)
+    auto [turningPoints, isRandomTurning] = analyzeTurningPoints();
+    result.turningPointsCount = turningPoints;
+    result.isRandomByTurningPoints = isRandomTurning;
+    
+    // 2. Проверка случайности (критерий серий)
+    auto [seriesCount, isRandomSeries] = analyzeSeriesTest();
+    result.seriesCount = seriesCount;
+    result.isRandomBySeries = isRandomSeries;
+    
+    // 3. Проверка нормальности (асимметрия и эксцесс)
+    result.skewness = calculateSkewness();
+    result.kurtosis = calculateKurtosis();
+    result.isNormalByMoments = (std::abs(result.skewness) < 1.0 && std::abs(result.kurtosis) < 1.0);
+    
+    // 4. Проверка нормальности (RS-критерий)
+    result.rSStatistic = calculateRSStatistic();
+    size_t n = data.size();
+    bool isNormalRS = (result.rSStatistic > 6.5 && result.rSStatistic < 8.5); // для n > 20
+    
+    if (n <= 20) {
+        // Более строгие границы для малых выборок
+        isNormalRS = (result.rSStatistic > 2.0 && result.rSStatistic < 4.0);
+    }
+    result.isNormalByRS = isNormalRS;
+    
+    // 5. Проверка равенства нулю матожидания (критерий Стьюдента)
+    result.mean = std::accumulate(data.begin(), data.end(), 0.0) / n;
+    double sumSq = 0.0;
+    for (double value : data) {
+        sumSq += (value - result.mean) * (value - result.mean);
+    }
+    double stdDev = std::sqrt(sumSq / (n - 1));
+    
+    if (stdDev > 0) {
+        result.tStatistic = std::abs(result.mean) / (stdDev / std::sqrt(n));
+        result.hasZeroMean = (result.tStatistic < 2.0); // для α=0.05
+    } else {
+        result.tStatistic = 0.0;
+        result.hasZeroMean = true;
+    }
+    
+    // 6. Проверка независимости (критерий Дарбина-Уотсона)
+    result.durbinWatsonStatistic = calculateDurbinWatson();
+    // Для α=0.05: dL ≈ 1.5, dU ≈ 1.7 (зависит от n и числа параметров)
+    result.isIndependent = (result.durbinWatsonStatistic > 1.5 && 
+                           result.durbinWatsonStatistic < 2.5);
+    
+    // 7. Общий вывод об адекватности
+    result.isAdequate = result.isRandomByTurningPoints &&
+                       result.isRandomBySeries &&
+                       result.isNormalByMoments &&
+                       result.isNormalByRS &&
+                       result.hasZeroMean &&
+                       result.isIndependent;
+    
+    // Формируем текстовый вывод
+    std::stringstream conclusion;
+    conclusion << "=== RESIDUAL ANALYSIS CONCLUSION ===\n";
+    conclusion << "Randomness (turning points): " << (result.isRandomByTurningPoints ? "YES" : "NO") << "\n";
+    conclusion << "Randomness (series test): " << (result.isRandomBySeries ? "YES" : "NO") << "\n";
+    conclusion << "Normality (skewness/kurtosis): " << (result.isNormalByMoments ? "YES" : "NO") << "\n";
+    conclusion << "Normality (RS-test): " << (result.isNormalByRS ? "YES" : "NO") << "\n";
+    conclusion << "Zero mean (t-test): " << (result.hasZeroMean ? "YES" : "NO") << "\n";
+    conclusion << "Independence (Durbin-Watson): " << (result.isIndependent ? "YES" : "NO") << "\n";
+    conclusion << "OVERALL MODEL ADEQUACY: " << (result.isAdequate ? "ADEQUATE" : "NOT ADEQUATE") << "\n";
+    
+    result.conclusion = conclusion.str();
+    
+    return result;
 }

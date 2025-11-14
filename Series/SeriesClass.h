@@ -22,11 +22,50 @@ public:
         std::vector<double> secondaryResidual;
         std::vector<double> finalResidual;
     };
+    struct ResidualAnalysisResult {
+        // Для случайности
+        size_t turningPointsCount;
+        double turningPointsStatistic;
+        bool isRandomByTurningPoints;
+        
+        size_t seriesCount;
+        double seriesStatistic;
+        bool isRandomBySeries;
+        
+        // Для нормальности
+        double skewness;
+        double kurtosis;
+        bool isNormalByMoments;
+        
+        double rSStatistic;
+        bool isNormalByRS;
+        
+        // Для математического ожидания
+        double mean;
+        double tStatistic;
+        bool hasZeroMean;
+        
+        // Для независимости
+        double durbinWatsonStatistic;
+        bool isIndependent;
+        
+        // Общий вывод
+        bool isAdequate;
+        std::string conclusion;
+    };
+
 
 private:
     std::vector<double> data;
     std::vector<std::string> timestamps;
     std::string name;
+
+    double calculateSkewness() const;
+    double calculateKurtosis() const;
+    double calculateRSStatistic() const;
+    double calculateDurbinWatson() const;
+    std::pair<size_t, bool> analyzeTurningPoints() const;
+    std::pair<size_t, bool> analyzeSeriesTest() const;
 
 public:
     
@@ -88,6 +127,8 @@ public:
     std::vector<double> predictLogistic(double k, double A) const;
     std::vector<double> predictPolynomial2(const std::vector<double>& coeffs) const;
     std::vector<double> predictPolynomial3(const std::vector<double>& coeffs) const;
+
+    ResidualAnalysisResult analyzeResiduals() const;
 };
 
 #endif 

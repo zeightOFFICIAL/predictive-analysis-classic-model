@@ -994,3 +994,117 @@ void SeriesControl::saveGrowthCurveData(const SeriesClass& series,
                                       const std::string& name) const {
     saveGrowthCurveData(series.getData(), series.getTimestamps(), filename, name);
 }
+
+void SeriesControl::analyzeResiduals() const {
+    std::cout << "=== RESIDUAL COMPONENT ANALYSIS ===" << std::endl;
+    
+    // Получаем остаточную компоненту из декомпозиции
+    auto decomposition = series.decomposeTimeSeries(12); // период можно настроить
+    SeriesClass residualsSeries(decomposition.finalResidual, 
+                               series.getTimestamps(), 
+                               series.getName() + " - Residuals");
+    
+    // Анализируем остатки
+    auto analysis = residualsSeries.analyzeResiduals();
+    
+    // Выводим детальные результаты
+    std::cout << "Residual series: " << residualsSeries.getName() << std::endl;
+    std::cout << "Number of points: " << residualsSeries.size() << std::endl;
+    
+    std::cout << "\n1. RANDOMNESS TESTS:" << std::endl;
+    std::cout << "Turning points count: " << analysis.turningPointsCount << std::endl;
+    std::cout << "Random by turning points: " << (analysis.isRandomByTurningPoints ? "YES" : "NO") << std::endl;
+    std::cout << "Series count: " << analysis.seriesCount << std::endl;
+    std::cout << "Random by series test: " << (analysis.isRandomBySeries ? "YES" : "NO") << std::endl;
+    
+    std::cout << "\n2. NORMALITY TESTS:" << std::endl;
+    std::cout << "Skewness: " << analysis.skewness << " (should be near 0)" << std::endl;
+    std::cout << "Kurtosis: " << analysis.kurtosis << " (should be near 0)" << std::endl;
+    std::cout << "Normal by moments: " << (analysis.isNormalByMoments ? "YES" : "NO") << std::endl;
+    std::cout << "RS-statistic: " << analysis.rSStatistic << " (should be 2.5-3.5)" << std::endl;
+    std::cout << "Normal by RS-test: " << (analysis.isNormalByRS ? "YES" : "NO") << std::endl;
+    
+    std::cout << "\n3. ZERO MEAN TEST:" << std::endl;
+    std::cout << "Mean: " << analysis.mean << std::endl;
+    std::cout << "T-statistic: " << analysis.tStatistic << " (should be < 2.0)" << std::endl;
+    std::cout << "Has zero mean: " << (analysis.hasZeroMean ? "YES" : "NO") << std::endl;
+    
+    std::cout << "\n4. INDEPENDENCE TEST:" << std::endl;
+    std::cout << "Durbin-Watson statistic: " << analysis.durbinWatsonStatistic 
+              << " (should be 1.5-2.5)" << std::endl;
+    std::cout << "Independent: " << (analysis.isIndependent ? "YES" : "NO") << std::endl;
+    
+    std::cout << "\n" << analysis.conclusion << std::endl;
+    
+    // Дополнительно: строим график остатков
+    plotResiduals(residualsSeries);
+}
+
+// Метод для построения графика остатков
+void SeriesControl::plotResiduals(const SeriesClass& residuals) const {
+    std::filesystem::create_directories("plots/residuals");
+    
+    std::string dataFile = "plots/residuals/residuals.dat";
+    std::ofstream file(dataFile);
+    
+    file << "# Index Residual" << std::endl;
+    auto data = residuals.getData();
+    for (size_t i = 0; i < data.size(); ++i) {
+        file << i << " " << std::fixed << std::setprecision(6) << data[i] << std::endl;
+    }
+    file.close();
+    
+    std::string scriptFile = "plots/residuals/residuals_plot.gnu";
+    std::ofstream script(scriptFile);
+    
+    script << "set terminal pngcairo size 1600,800 enhanced font 'Arial,12'" << std::endl;
+    script << "set output 'plots/residuals/residuals_analysis.png'" << std::endl;
+    script << "set multiplot layout 2,2 title 'Residual Analysis: " << series.getName() << "'" << std::endl;
+    
+    // График остатков во времени
+    script << "set title 'Residuals vs Time'" << std::endl;
+    script << "set xlabel 'Time Index'" << std::endl;
+    script << "set ylabel 'Residual Value'" << std::endl;
+    script << "set grid" << std::endl;
+    script << "plot '" << dataFile << "' using 1:2 with lines lw 1 lc rgb 'blue' title 'Residuals', \\" << std::endl;
+    script << "     0 with lines lw 2 lc rgb 'red' title 'Zero line'" << std::endl;
+    
+    // Гистограмма распределения
+    script << "set title 'Residuals Distribution'" << std::endl;
+    script << "set xlabel 'Residual Value'" << std::endl;
+    script << "set ylabel 'Frequency'" << std::endl;
+    script << "set grid" << std::endl;
+    script << "binwidth = 0.1" << std::endl;
+    script << "bin(x,width) = width*floor(x/width)" << std::endl;
+    script << "plot '" << dataFile << "' using (bin($2,binwidth)):(1.0) smooth freq with boxes lc rgb 'green' title 'Distribution'" << std::endl;
+    
+    // Q-Q plot (для проверки нормальности)
+    script << "set title 'Q-Q Plot (Normality Check)'" << std::endl;
+    script << "set xlabel 'Theoretical Quantiles'" << std::endl;
+    script << "set ylabel 'Sample Quantiles'" << std::endl;
+    script << "set grid" << std::endl;
+    script << "stats '" << dataFile << "' using 2 nooutput" << std::endl;
+    script << "plot '" << dataFile << "' using (invnorm(($0+1)/(STATS_records+1))):2 with points pt 7 lc rgb 'purple' title 'Q-Q points', \\" << std::endl;
+    script << "     x with lines lw 2 lc rgb 'red' title 'Normal line'" << std::endl;
+    
+    // Автокорреляционная функция
+    script << "set title 'Autocorrelation Function'" << std::endl;
+    script << "set xlabel 'Lag'" << std::endl;
+    script << "set ylabel 'Autocorrelation'" << std::endl;
+    script << "set grid" << std::endl;
+    script << "set yrange [-1:1]" << std::endl;
+    script << "plot '" << dataFile << "' using 1:2 with lines lw 1 lc rgb 'orange' title 'ACF'" << std::endl;
+    
+    script << "unset multiplot" << std::endl;
+    script.close();
+    
+    std::string command = "gnuplot \"" + scriptFile + "\"";
+    int result = std::system(command.c_str());
+    
+    if (result == 0) {
+        std::cout << "Residual analysis plot saved: plots/residuals/residuals_analysis.png" << std::endl;
+    }
+    
+    // Очистка временных файлов
+    cleanupDataFiles({dataFile, scriptFile});
+}

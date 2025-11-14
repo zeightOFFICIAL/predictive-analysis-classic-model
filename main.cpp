@@ -80,8 +80,11 @@ static void displayMenu() {
     std::cout << "38. Analyze growth curve characteristics\n";
     std::cout << "39. Fit and compare growth curves\n";
     
+    std::cout << "\n" << BOLD << MAGENTA_COLOR << "====== RESIDUAL COMPONENT ANALYSIS ======" << RESET << "\n";
+    std::cout << "40. Analyze residual component adequacy\n";
+    
     std::cout << "\n0. Exit program\n";
-    std::cout << "Enter your choice (0-39): ";
+    std::cout << "Enter your choice (0-40): ";
 }
 
 static void displayItemsMenu(const std::vector<std::string>& items) {
@@ -267,6 +270,96 @@ static void runTimeSeriesAnalysis(const RecordClass& data) {
         default:
             std::cout << RED_COLOR << "Invalid option!\n" << RESET;
     }
+}
+
+static void runResidualAnalysis(const RecordClass& data) {
+    std::cout << MAGENTA_COLOR << "\n=== RESIDUAL COMPONENT ANALYSIS ===" << RESET << std::endl;
+    
+    // Выбор временного ряда для анализа
+    SeriesControl seriesControl = selectTimeSeries(data);
+    
+    // Сначала выполняем декомпозицию, чтобы получить остаточную компоненту
+    std::cout << CYAN_COLOR << "Performing time series decomposition..." << RESET << std::endl;
+    
+    int period;
+    std::cout << "Enter period for decomposition (e.g., 12 for monthly, 365 for yearly): ";
+    if (!(std::cin >> period)) {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << RED_COLOR << "Invalid input! Using default period 365." << RESET << std::endl;
+        period = 365;
+    }
+    
+    // Выполняем декомпозицию
+    seriesControl.plotDecomposition(period);
+    
+    // Теперь анализируем остаточную компоненту
+    std::cout << CYAN_COLOR << "\nAnalyzing residual component adequacy..." << RESET << std::endl;
+    
+    // Получаем остаточную компоненту из декомпозиции
+    auto decomposition = seriesControl.getSeries().decomposeTimeSeries(period);
+    
+    // Создаем временный ряд из остаточной компоненты
+    SeriesClass residualsSeries(decomposition.finalResidual, 
+                               seriesControl.getSeries().getTimestamps(), 
+                               seriesControl.getSeries().getName() + " - Residuals");
+    
+    // Анализируем остатки
+    auto analysis = residualsSeries.analyzeResiduals();
+    
+    // Выводим результаты
+    std::cout << "\n" << GREEN_COLOR << "=== RESIDUAL ANALYSIS RESULTS ===" << RESET << std::endl;
+    std::cout << "Residual series: " << residualsSeries.getName() << std::endl;
+    std::cout << "Number of points: " << residualsSeries.size() << std::endl;
+    
+    std::cout << "\n" << YELLOW_COLOR << "1. RANDOMNESS TESTS:" << RESET << std::endl;
+    std::cout << "Turning points count: " << analysis.turningPointsCount << std::endl;
+    std::cout << "Random by turning points: " << (analysis.isRandomByTurningPoints ? GREEN_COLOR + "YES" + RESET : RED_COLOR + "NO" + RESET) << std::endl;
+    std::cout << "Series count: " << analysis.seriesCount << std::endl;
+    std::cout << "Random by series test: " << (analysis.isRandomBySeries ? GREEN_COLOR + "YES" + RESET : RED_COLOR + "NO" + RESET) << std::endl;
+    
+    std::cout << "\n" << YELLOW_COLOR << "2. NORMALITY TESTS:" << RESET << std::endl;
+    std::cout << "Skewness: " << analysis.skewness << " (should be near 0)" << std::endl;
+    std::cout << "Kurtosis: " << analysis.kurtosis << " (should be near 0)" << std::endl;
+    std::cout << "Normal by moments: " << (analysis.isNormalByMoments ? GREEN_COLOR + "YES" + RESET : RED_COLOR + "NO" + RESET) << std::endl;
+    std::cout << "RS-statistic: " << analysis.rSStatistic << " (should be 7.5-8.5)" << std::endl;
+    std::cout << "Normal by RS-test: " << (analysis.isNormalByRS ? GREEN_COLOR + "YES" + RESET : RED_COLOR + "NO" + RESET) << std::endl;
+    
+    std::cout << "\n" << YELLOW_COLOR << "3. ZERO MEAN TEST:" << RESET << std::endl;
+    std::cout << "Mean: " << analysis.mean << std::endl;
+    std::cout << "T-statistic: " << analysis.tStatistic << " (should be < 2.0)" << std::endl;
+    std::cout << "Has zero mean: " << (analysis.hasZeroMean ? GREEN_COLOR + "YES" + RESET : RED_COLOR + "NO" + RESET) << std::endl;
+    
+    std::cout << "\n" << YELLOW_COLOR << "4. INDEPENDENCE TEST:" << RESET << std::endl;
+    std::cout << "Durbin-Watson statistic: " << analysis.durbinWatsonStatistic 
+              << " (should be 1.5-2.5)" << std::endl;
+    std::cout << "Independent: " << (analysis.isIndependent ? GREEN_COLOR + "YES" + RESET : RED_COLOR + "NO" + RESET) << std::endl;
+    
+    std::cout << "\n" << BOLD << MAGENTA_COLOR << "=== FINAL CONCLUSION ===" << RESET << std::endl;
+    std::cout << "Randomness (turning points): " << (analysis.isRandomByTurningPoints ? GREEN_COLOR + "PASS" + RESET : RED_COLOR + "FAIL" + RESET) << std::endl;
+    std::cout << "Randomness (series test): " << (analysis.isRandomBySeries ? GREEN_COLOR + "PASS" + RESET : RED_COLOR + "FAIL" + RESET) << std::endl;
+    std::cout << "Normality (skewness/kurtosis): " << (analysis.isNormalByMoments ? GREEN_COLOR + "PASS" + RESET : RED_COLOR + "FAIL" + RESET) << std::endl;
+    std::cout << "Normality (RS-test): " << (analysis.isNormalByRS ? GREEN_COLOR + "PASS" + RESET : RED_COLOR + "FAIL" + RESET) << std::endl;
+    std::cout << "Zero mean (t-test): " << (analysis.hasZeroMean ? GREEN_COLOR + "PASS" + RESET : RED_COLOR + "FAIL" + RESET) << std::endl;
+    std::cout << "Independence (Durbin-Watson): " << (analysis.isIndependent ? GREEN_COLOR + "PASS" + RESET : RED_COLOR + "FAIL" + RESET) << std::endl;
+    
+    std::cout << "\n" << BOLD << (analysis.isAdequate ? GREEN_COLOR : RED_COLOR) 
+              << "OVERALL MODEL ADEQUACY: " << (analysis.isAdequate ? "ADEQUATE" : "NOT ADEQUATE") 
+              << RESET << std::endl;
+    
+    if (analysis.isAdequate) {
+        std::cout << GREEN_COLOR << "✓ The trend model is adequate - residuals behave like white noise" << RESET << std::endl;
+    } else {
+        std::cout << RED_COLOR << "✗ The trend model is not adequate - residuals show systematic patterns" << RESET << std::endl;
+        std::cout << YELLOW_COLOR << "Recommendation: Consider using a different model or including additional factors" << RESET << std::endl;
+    }
+    
+    // Строим графики для визуального анализа остатков
+    std::cout << CYAN_COLOR << "\nGenerating residual analysis plots..." << RESET << std::endl;
+    
+    // Создаем временный SeriesControl для остатков, чтобы использовать метод построения графиков
+    SeriesControl residualControl(seriesControl);
+    residualControl.plotResiduals(residualsSeries);
 }
 
 int main(int argc, char* argv[]) {
@@ -516,12 +609,17 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
+            case 40: {
+                runResidualAnalysis(data);
+                break;
+            }
+
             case 0:
                 std::cout << GREEN_COLOR << "\nClosing market analysis...\n" << RESET;
                 return 0;
 
             default:
-                std::cout << RED_COLOR << "Invalid option! Please choose 0-39.\n" << RESET;
+                std::cout << RED_COLOR << "Invalid option! Please choose 0-40.\n" << RESET;
         }
     }
 }

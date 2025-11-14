@@ -65,6 +65,9 @@ public:
     void plotAllSeries(const std::vector<SeriesClass>& smoothedSeries) const;
     void plotIndividualComparison(const SeriesClass& smoothedSeries) const;
     void plotDecomposition(int period = 12) const;
+
+    void analyzeResiduals() const;
+    void plotResiduals(const SeriesClass& residuals) const;
     
     
     
