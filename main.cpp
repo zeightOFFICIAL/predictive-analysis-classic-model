@@ -505,7 +505,6 @@ int main(int argc, char* argv[]) {
 
             case 38: {
                 SeriesControl seriesControl = selectTimeSeries(data);
-                // Вызов нового метода анализа характеристик кривых роста
                 auto& series = seriesControl.getSeries();
                 series.analyzeGrowthCurveCharacteristics();
                 break;
@@ -513,7 +512,6 @@ int main(int argc, char* argv[]) {
 
             case 39: {
                 SeriesControl seriesControl = selectTimeSeries(data);
-                // Вызов нового метода подбора и сравнения кривых роста
                 seriesControl.analyzeGrowthCurves();
                 break;
             }

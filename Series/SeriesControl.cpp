@@ -672,58 +672,215 @@ void SeriesControl::plotDecomposition(int period) const {
     std::cout << std::endl;
 }
 
-// SeriesControl.cpp - добавляем новые методы
 
 void SeriesControl::analyzeGrowthCurves() const {
-    std::cout << "=== GROWTH CURVE ANALYSIS ===" << std::endl;
+    std::cout << "=== COMPREHENSIVE GROWTH CURVE ANALYSIS ===" << std::endl;
+    std::cout << "Series: " << series.getName() << std::endl;
     
-    // Анализ характеристик для выбора кривой
     series.analyzeGrowthCurveCharacteristics();
     
-    // Подгонка различных кривых
+    std::cout << "\n=== PARAMETER ESTIMATION ===" << std::endl;
+    
     auto [a_linear, b_linear] = series.fitLinearPolynomial();
     auto [a_exp, b_exp] = series.fitExponential();
     auto [a_gomp, b_gomp] = series.fitGompertz();
-    auto [a_log, b_log] = series.fitLogistic();
+    auto [a_log, A_log] = series.fitLogistic();
     
-    std::cout << "\n=== FITTED PARAMETERS ===" << std::endl;
     std::cout << "Linear Polynomial: y = " << a_linear << " + " << b_linear << " * t" << std::endl;
     std::cout << "Exponential Curve: y = " << a_exp << " * exp(" << b_exp << " * t)" << std::endl;
-    std::cout << "Gompertz Curve: parameters a = " << a_gomp << ", b = " << b_gomp << std::endl;
-    std::cout << "Logistic Curve: parameters a = " << a_log << ", b = " << b_log << std::endl;
+    std::cout << "Gompertz Curve: k = " << a_gomp << ", t0 = " << b_gomp << std::endl;
+    std::cout << "Logistic Curve: k = " << a_log << ", A = " << A_log << std::endl;
     
-    // Прогнозирование
-    auto linear_pred = series.predictLinear(a_linear, b_linear);
-    auto exp_pred = series.predictExponential(a_exp, b_exp);
-    auto gomp_pred = series.predictGompertz(a_gomp, b_gomp);
-    auto log_pred = series.predictLogistic(a_log, b_log);
+    std::cout << "\n=== MODEL VALIDITY AND QUALITY ASSESSMENT ===" << std::endl;
     
-    // Построение графиков
-    plotGrowthCurvesComparison(linear_pred, exp_pred, gomp_pred, log_pred);
+    bool linear_valid = (std::abs(b_linear) > 1e-8 && std::abs(b_linear) < 1000.0);
+    bool exp_valid = (std::abs(b_exp) > 1e-10 && std::abs(b_exp) < 1.0 && a_exp > 1.0);
+    bool gomp_valid = (a_gomp > 1e-8 && a_gomp < 10.0 && std::abs(b_gomp) < series.size() * 100.0);
+    bool logistic_valid = (a_log > 1e-8 && a_log < 10.0 && A_log > 0.01 && A_log < 10000.0);
+    
+    std::cout << "Linear model valid: " << (linear_valid ? "YES" : "NO") << std::endl;
+    std::cout << "Exponential model valid: " << (exp_valid ? "YES" : "NO") << std::endl;
+    std::cout << "Gompertz model valid: " << (gomp_valid ? "YES" : "NO") << std::endl;
+    std::cout << "Logistic model valid: " << (logistic_valid ? "YES" : "NO") << std::endl;
+    
+    auto data = series.getData();
+    double data_mean = std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+    double data_std = 0.0;
+    for (double val : data) {
+        data_std += (val - data_mean) * (val - data_mean);
+    }
+    data_std = std::sqrt(data_std / data.size());
+    
+    auto linear_pred = linear_valid ? series.predictLinear(a_linear, b_linear) : std::vector<double>();
+    auto exp_pred = exp_valid ? series.predictExponential(a_exp, b_exp) : std::vector<double>();
+    auto gomp_pred = gomp_valid ? series.predictGompertz(a_gomp, b_gomp) : std::vector<double>();
+    auto log_pred = logistic_valid ? series.predictLogistic(a_log, A_log) : std::vector<double>();
+    
+    auto calculate_metrics = [&](const std::vector<double>& predictions) -> std::pair<double, double> {
+        if (predictions.empty() || predictions.size() != data.size()) {
+            return {0.0, 0.0};
+        }
+        
+        double mse = 0.0;
+        double ss_total = 0.0;
+        double ss_residual = 0.0;
+        
+        for (size_t i = 0; i < data.size(); ++i) {
+            double error = data[i] - predictions[i];
+            mse += error * error;
+            ss_total += (data[i] - data_mean) * (data[i] - data_mean);
+            ss_residual += error * error;
+        }
+        
+        mse /= data.size();
+        double r_squared = (ss_total > 0) ? 1.0 - (ss_residual / ss_total) : 0.0;
+        
+        return {mse, r_squared};
+    };
+    
+    auto [mse_linear, r2_linear] = calculate_metrics(linear_pred);
+    auto [mse_exp, r2_exp] = calculate_metrics(exp_pred);
+    auto [mse_gomp, r2_gomp] = calculate_metrics(gomp_pred);
+    auto [mse_log, r2_log] = calculate_metrics(log_pred);
+    
+    std::cout << "\n=== MODEL QUALITY METRICS ===" << std::endl;
+    std::cout << std::fixed << std::setprecision(6);
+    
+    if (linear_valid) {
+        std::cout << "LINEAR - MSE: " << mse_linear << ", R sqr: " << r2_linear;
+        std::cout << " | Strength: " << (std::abs(b_linear) / (data_std + 1e-10)) << std::endl;
+    }
+    
+    if (exp_valid) {
+        std::cout << "EXPONENTIAL - MSE: " << mse_exp << ", R sqr: " << r2_exp;
+        std::cout << " | Daily growth: " << (std::exp(b_exp) - 1.0) * 100.0 << "%" << std::endl;
+    }
+    
+    if (gomp_valid) {
+        std::cout << "GOMPERTZ - MSE: " << mse_gomp << ", R sqr: " << r2_gomp;
+        std::cout << " | Growth rate: " << a_gomp << " (very " << (a_gomp < 0.001 ? "SLOW" : "moderate") << ")" << std::endl;
+    }
+    
+    if (logistic_valid) {
+        std::cout << "LOGISTIC - MSE: " << mse_log << ", R sqr: " << r2_log;
+        std::cout << " | Growth rate: " << a_log << " (very " << (a_log < 0.001 ? "SLOW" : "moderate") << ")" << std::endl;
+    }
+    
+    std::cout << "\n=== QUALITATIVE MODEL ASSESSMENT ===" << std::endl;
+    
+    std::vector<std::pair<double, std::string>> models_r2;
+    if (linear_valid) models_r2.push_back({r2_linear, "LINEAR"});
+    if (exp_valid) models_r2.push_back({r2_exp, "EXPONENTIAL"});
+    if (gomp_valid) models_r2.push_back({r2_gomp, "GOMPERTZ"});
+    if (logistic_valid) models_r2.push_back({r2_log, "LOGISTIC"});
+    
+    std::sort(models_r2.rbegin(), models_r2.rend());
+    
+    std::cout << "MODEL RANKING (by R sqr):" << std::endl;
+    for (size_t i = 0; i < models_r2.size(); ++i) {
+        std::cout << i + 1 << ". " << models_r2[i].second << " (R sqr = " << models_r2[i].first << ")" << std::endl;
+    }
+    
+    std::cout << "\n=== PRACTICAL RECOMMENDATIONS ===" << std::endl;
+    
+    if (!models_r2.empty()) {
+        std::string best_model = models_r2[0].second;
+        double best_r2 = models_r2[0].first;
+        
+        std::cout << "BEST MODEL: " << best_model << " (R sqr = " << best_r2 << ")" << std::endl;
+        
+        if (best_r2 > 0.9) {
+            std::cout << "> EXCELLENT fit - model explains over 90% of variance" << std::endl;
+        } else if (best_r2 > 0.7) {
+            std::cout << "> GOOD fit - model explains over 70% of variance" << std::endl;
+        } else if (best_r2 > 0.5) {
+            std::cout << "> MODERATE fit - model explains over 50% of variance" << std::endl;
+        } else {
+            std::cout << "> WEAK fit - consider data transformation or other models" << std::endl;
+        }
+        
+        if (best_model == "LINEAR" && std::abs(b_linear) > 0.1) {
+            std::cout << "> Strong linear trend detected - reliable for forecasting" << std::endl;
+        }
+        
+        if (best_model == "EXPONENTIAL" && b_exp > 0.001) {
+            double annual_growth = (std::exp(b_exp * 365) - 1.0) * 100.0;
+            std::cout << "> Significant exponential growth: " << annual_growth << "% annually" << std::endl;
+        }
+        
+        if ((best_model == "GOMPERTZ" || best_model == "LOGISTIC") && 
+            (a_gomp > 0.01 || a_log > 0.01)) {
+            std::cout << "> Saturation growth pattern detected" << std::endl;
+        }
+    }
+    
+    std::cout << "\n=== MODEL ROBUSTNESS CHECK ===" << std::endl;
+    
+    if (linear_valid) {
+        double complexity_penalty = std::abs(b_linear) * data.size() / 1000.0;
+        std::cout << "Linear complexity: " << complexity_penalty << " (lower is better)" << std::endl;
+    }
+    
+    plotGrowthCurvesComparison(linear_pred, exp_pred, gomp_pred, log_pred,
+                              linear_valid, exp_valid, gomp_valid, logistic_valid);
+    
+    std::cout << "\n=== FINAL SUMMARY ===" << std::endl;
+    if (!models_r2.empty() && models_r2[0].first > 0.8) {
+        std::cout << "STRONG statistical foundation for " << models_r2[0].second << " model" << std::endl;
+    } else if (!models_r2.empty() && models_r2[0].first > 0.6) {
+        std::cout << "MODERATE statistical foundation - use " << models_r2[0].second << " with caution" << std::endl;
+    } else {
+        std::cout << "WEAK statistical foundation - consider data preprocessing" << std::endl;
+    }
 }
 
 void SeriesControl::plotGrowthCurvesComparison(const std::vector<double>& linear_pred,
                                              const std::vector<double>& exp_pred,
                                              const std::vector<double>& gomp_pred,
-                                             const std::vector<double>& log_pred) const {
-    std::cout << "=== GENERATING GROWTH CURVES COMPARISON PLOT ===" << std::endl;
+                                             const std::vector<double>& log_pred,
+                                             bool linear_valid,
+                                             bool exp_valid,
+                                             bool gomp_valid,
+                                             bool logistic_valid) const {
+    std::cout << "\n=== GENERATING GROWTH CURVES COMPARISON PLOT ===" << std::endl;
     
     std::filesystem::create_directories("plots/growth_curves");
     
     // Сохранение данных
     std::string originalFile = "plots/growth_curves/original.dat";
-    std::string linearFile = "plots/growth_curves/linear.dat";
-    std::string expFile = "plots/growth_curves/exponential.dat";
-    std::string gompFile = "plots/growth_curves/gompertz.dat";
-    std::string logFile = "plots/growth_curves/logistic.dat";
-    
     saveGrowthCurveData(series, originalFile, "Original");
-    saveGrowthCurveData(linear_pred, series.getTimestamps(), linearFile, "Linear");
-    saveGrowthCurveData(exp_pred, series.getTimestamps(), expFile, "Exponential");
-    saveGrowthCurveData(gomp_pred, series.getTimestamps(), gompFile, "Gompertz");
-    saveGrowthCurveData(log_pred, series.getTimestamps(), logFile, "Logistic");
     
-    // Создание скрипта GNUplot
+    std::vector<std::string> dataFiles = {originalFile};
+    std::vector<std::string> validModels;
+    
+    if (linear_valid && !linear_pred.empty()) {
+        std::string linearFile = "plots/growth_curves/linear.dat";
+        saveGrowthCurveData(linear_pred, series.getTimestamps(), linearFile, "Linear");
+        dataFiles.push_back(linearFile);
+        validModels.push_back("linear");
+    }
+    
+    if (exp_valid && !exp_pred.empty()) {
+        std::string expFile = "plots/growth_curves/exponential.dat";
+        saveGrowthCurveData(exp_pred, series.getTimestamps(), expFile, "Exponential");
+        dataFiles.push_back(expFile);
+        validModels.push_back("exponential");
+    }
+    
+    if (gomp_valid && !gomp_pred.empty()) {
+        std::string gompFile = "plots/growth_curves/gompertz.dat";
+        saveGrowthCurveData(gomp_pred, series.getTimestamps(), gompFile, "Gompertz");
+        dataFiles.push_back(gompFile);
+        validModels.push_back("gompertz");
+    }
+    
+    if (logistic_valid && !log_pred.empty()) {
+        std::string logFile = "plots/growth_curves/logistic.dat";
+        saveGrowthCurveData(log_pred, series.getTimestamps(), logFile, "Logistic");
+        dataFiles.push_back(logFile);
+        validModels.push_back("logistic");
+    }
+    
     std::string scriptFile = "plots/growth_curves/growth_comparison.gnu";
     std::ofstream script(scriptFile);
     
@@ -736,26 +893,35 @@ void SeriesControl::plotGrowthCurvesComparison(const std::vector<double>& linear
     script << "set key outside center top horizontal" << std::endl;
     script << std::endl;
     
-    script << "plot '" << originalFile << "' using 1:3 with lines lw 3 title 'Original Data', \\" << std::endl;
-    script << "     '" << linearFile << "' using 1:3 with lines lw 2 title 'Linear Polynomial', \\" << std::endl;
-    script << "     '" << expFile << "' using 1:3 with lines lw 2 title 'Exponential', \\" << std::endl;
-    script << "     '" << gompFile << "' using 1:3 with lines lw 2 title 'Gompertz', \\" << std::endl;
-    script << "     '" << logFile << "' using 1:3 with lines lw 2 title 'Logistic'" << std::endl;
+    script << "plot '" << originalFile << "' using 1:3 with lines lw 3 title 'Original Data'";
+    
+    int plotIndex = 2;
+    for (const auto& model : validModels) {
+        script << ", \\" << std::endl;
+        script << "     'plots/growth_curves/" << model << ".dat' using 1:3 with lines lw 2 title '" 
+               << (model == "linear" ? "Linear Polynomial" : 
+                   model == "exponential" ? "Exponential" : 
+                   model == "gompertz" ? "Gompertz" : "Logistic") << "'";
+        plotIndex++;
+    }
+    script << std::endl;
     
     script.close();
     
-    // Запуск GNUplot
     std::string command = "gnuplot \"" + scriptFile + "\"";
     int result = std::system(command.c_str());
     
     if (result == 0) {
         std::cout << "Growth curves comparison plot saved as: plots/growth_curves/growth_curves_comparison.png" << std::endl;
+        std::cout << "Models included: " << validModels.size() << " valid models" << std::endl;
     } else {
         std::cerr << "Error: GNU Plot execution failed for growth curves comparison" << std::endl;
     }
     
-    // Очистка временных файлов
-    cleanupDataFiles({originalFile, linearFile, expFile, gompFile, logFile, scriptFile});
+    cleanupDataFiles(dataFiles);
+    if (std::filesystem::exists(scriptFile)) {
+        std::filesystem::remove(scriptFile);
+    }
 }
 
 void SeriesControl::saveGrowthCurveData(const std::vector<double>& values, 
