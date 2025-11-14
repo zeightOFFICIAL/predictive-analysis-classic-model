@@ -1108,3 +1108,55 @@ void SeriesControl::plotResiduals(const SeriesClass& residuals) const {
     // Очистка временных файлов
     cleanupDataFiles({dataFile, scriptFile});
 }
+
+// SeriesControl.cpp (добавления в конец файла, после существующих реализаций)
+
+// SeriesControl.cpp (обновление функции forecastAnalysis)
+
+void SeriesControl::forecastAnalysis(size_t shortStep, size_t longStep) const {
+    std::cout << "=== FORECAST ANALYSIS ===" << std::endl;
+    std::cout << "Series: " << series.getName() << std::endl;
+    std::cout << "Steps: " << shortStep << " and " << longStep << std::endl;
+    
+    size_t max_steps = std::max(shortStep, longStep);
+    
+    // Linear forecast
+    std::cout << "\nLINEAR TREND FORECAST:" << std::endl;
+    auto linear_forecasts = series.forecastLinear(max_steps);
+    for (size_t step : {shortStep, longStep}) {
+        if (step <= linear_forecasts.size()) {
+            auto& f = linear_forecasts[step - 1];
+            double span = f.upper - f.lower;
+            std::cout << "Step " << step << ": Expected = " << f.point 
+                      << ", Confidence range = [" << f.lower << ", " << f.upper << "]"
+                      << ", Total interval span = " << span << std::endl;
+        }
+    }
+    
+    // Poly2 forecast
+    std::cout << "\nPOLYNOMIAL2 TREND FORECAST:" << std::endl;
+    auto poly2_forecasts = series.forecastPolynomial2(max_steps);
+    for (size_t step : {shortStep, longStep}) {
+        if (step <= poly2_forecasts.size()) {
+            auto& f = poly2_forecasts[step - 1];
+            double span = f.upper - f.lower;
+            std::cout << "Step " << step << ": Expected = " << f.point 
+                      << ", Confidence range = [" << f.lower << ", " << f.upper << "]"
+                      << ", Total interval span = " << span << std::endl;
+        }
+    }
+    
+    // Poly3 forecast
+    std::cout << "\nPOLYNOMIAL3 TREND FORECAST:" << std::endl;
+    auto poly3_forecasts = series.forecastPolynomial3(max_steps);
+    for (size_t step : {shortStep, longStep}) {
+        if (step <= poly3_forecasts.size()) {
+            auto& f = poly3_forecasts[step - 1];
+            double span = f.upper - f.lower;
+            std::cout << "Step " << step << ": Expected = " << f.point 
+                      << ", Confidence range = [" << f.lower << ", " << f.upper << "]"
+                      << ", Total interval span = " << span << std::endl;
+        }
+    }
+
+}

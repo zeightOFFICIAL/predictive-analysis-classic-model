@@ -129,6 +129,17 @@ public:
     std::vector<double> predictPolynomial3(const std::vector<double>& coeffs) const;
 
     ResidualAnalysisResult analyzeResiduals() const;
+
+    struct Forecast {
+    double point;
+    double lower;
+    double upper;
+};
+
+std::vector<Forecast> forecastLinear(size_t steps, double alpha = 0.05) const;
+std::vector<Forecast> forecastPolynomial2(size_t steps, double alpha = 0.05) const;
+std::vector<Forecast> forecastPolynomial3(size_t steps, double alpha = 0.05) const;
+double getTCritical(double alpha, size_t df) const;
 };
 
 #endif 

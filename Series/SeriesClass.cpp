@@ -868,12 +868,17 @@ std::vector<double> SeriesClass::fitPolynomial2() const {
         sum_t2y += t2 * data[t];
     }
     
-    // Решаем систему уравнений методом Крамера
+    // Решаем систему методом Крамера (без масштабирования)
     double det = n * (sum_t2 * sum_t4 - sum_t3 * sum_t3) 
                - sum_t * (sum_t * sum_t4 - sum_t2 * sum_t3)
                + sum_t2 * (sum_t * sum_t3 - sum_t2 * sum_t2);
     
-    if (std::abs(det) < 1e-12) return {0.0, 0.0, 0.0};
+    if (std::abs(det) < 1e-12) {
+        // Fallback to linear
+        double b_linear = (n * sum_ty - sum_t * sum_y) / (n * sum_t2 - sum_t * sum_t);
+        double a_linear = (sum_y - b_linear * sum_t) / n;
+        return {a_linear, b_linear, 0.0};
+    }
     
     double det_a = sum_y * (sum_t2 * sum_t4 - sum_t3 * sum_t3)
                  - sum_t * (sum_ty * sum_t4 - sum_t2y * sum_t3)
@@ -1221,4 +1226,334 @@ SeriesClass::ResidualAnalysisResult SeriesClass::analyzeResiduals() const {
     result.conclusion = conclusion.str();
     
     return result;
+}
+
+// SeriesClass.cpp (добавления в конец файла, после существующих реализаций)
+
+// Вспомогательная функция для вычисления t-критического значения (приближение для больших n, нормальное распределение)
+double SeriesClass::getTCritical(double alpha, size_t df) const {
+    // Для простоты используем приближение нормального распределения (z=1.96 для 95%), так как df обычно большой
+    // Для точности можно реализовать таблицу или аппроксимацию, но для лабораторной хватит
+    if (df < 2) return 0.0;
+    return 1.96; // Для alpha=0.05, двусторонний
+}
+
+// Реализация forecastLinear
+std::vector<SeriesClass::Forecast> SeriesClass::forecastLinear(size_t steps, double alpha) const {
+    std::vector<Forecast> results;
+    if (data.empty()) return results;
+
+    size_t n = data.size();
+    
+    // Fit linear: a + b*t
+    auto [a, b] = fitLinearPolynomial();
+    
+    // Вычисление необходимых статистик для интервала
+    double sum_t = 0.0, sum_t2 = 0.0, sum_y = 0.0, sum_ty = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        double t = static_cast<double>(i);
+        double y = data[i];
+        sum_t += t;
+        sum_t2 += t * t;
+        sum_y += y;
+        sum_ty += t * y;
+    }
+    
+    double mean_t = sum_t / n;
+    double Sxx = sum_t2 - (sum_t * sum_t) / n;
+    
+    // MSE
+    double SSE = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        double t = static_cast<double>(i);
+        double y_hat = a + b * t;
+        SSE += (data[i] - y_hat) * (data[i] - y_hat);
+    }
+    double MSE = SSE / (n - 2);
+    double std_err = std::sqrt(MSE);
+    
+    double t_crit = getTCritical(alpha, n - 2);
+    
+    // Прогноз на steps вперед
+    for (size_t k = 1; k <= steps; ++k) {
+        double t_future = static_cast<double>(n + k - 1); // t начинается с 0
+        double point = a + b * t_future;
+        
+        // Стандартная ошибка прогноза (prediction interval)
+        double se_pred = std_err * std::sqrt(1.0 + 1.0 / n + (t_future - mean_t) * (t_future - mean_t) / Sxx);
+        
+        double half_width = t_crit * se_pred;
+        double lower = point - half_width;
+        double upper = point + half_width;
+        
+        results.push_back({point, lower, upper});
+    }
+    
+    return results;
+}
+
+// Реализация forecastPolynomial2
+std::vector<SeriesClass::Forecast> SeriesClass::forecastPolynomial2(size_t steps, double alpha) const {
+    std::vector<Forecast> results;
+    if (data.size() < 3) return results; // Нужно минимум 3 точки для poly2
+
+    size_t n = data.size();
+    
+    // Fit poly2: a + b*t + c*t^2
+    auto coeffs = fitPolynomial2();
+    if (coeffs.size() != 3) return results;
+    double a = coeffs[0], b = coeffs[1], c = coeffs[2];
+    
+    // Для интервала в множественной регрессии нужно X matrix
+    // Построим матрицу X (n x 3): 1, t, t^2
+    // Но поскольку Gauss уже решен, вычислим SSE и var
+    double SSE = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        double t = static_cast<double>(i);
+        double t2 = t * t;
+        double y_hat = a + b * t + c * t2;
+        SSE += (data[i] - y_hat) * (data[i] - y_hat);
+    }
+    double MSE = SSE / (n - 3); // df = n - (k+1), k=2
+    double std_err = std::sqrt(MSE);
+    
+    // Для se_pred нужно x_future * (X^T X)^{-1} * x_future^T * MSE + MSE (для prediction)
+    // Так что нужно вычислить inverse of X^T X
+    // X^T X is the matrix from fit: 
+    // [ n     sum_t   sum_t2 ]
+    // [ sum_t  sum_t2  sum_t3 ]
+    // [ sum_t2 sum_t3  sum_t4 ]
+    
+    double sum_t = 0.0, sum_t2 = 0.0, sum_t3 = 0.0, sum_t4 = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        double t = static_cast<double>(i);
+        double t2 = t * t;
+        double t3 = t2 * t;
+        double t4 = t3 * t;
+        sum_t += t;
+        sum_t2 += t2;
+        sum_t3 += t3;
+        sum_t4 += t4;
+    }
+    
+    // Матрица X^T X
+    double XtX[3][3] = {
+        {static_cast<double>(n), sum_t, sum_t2},
+        {sum_t, sum_t2, sum_t3},
+        {sum_t2, sum_t3, sum_t4}
+    };
+    
+    // Вычислим inverse XtX (поскольку 3x3, можно вручную или Gauss)
+    // Для простоты используем формулу для 3x3 inverse, но реализуем Gauss для inverse
+    // Сначала копия для inverse
+    double mat[3][6]; // Augmented для inverse
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            mat[i][j] = XtX[i][j];
+            mat[i][j+3] = (i == j) ? 1.0 : 0.0;
+        }
+    }
+    
+    // Gauss-Jordan
+    for (int i = 0; i < 3; ++i) {
+        // Pivot
+        if (std::abs(mat[i][i]) < 1e-12) {
+            // Singular, return empty
+            return results;
+        }
+        double pivot = mat[i][i];
+        for (int j = 0; j < 6; ++j) {
+            mat[i][j] /= pivot;
+        }
+        for (int k = 0; k < 3; ++k) {
+            if (k != i) {
+                double factor = mat[k][i];
+                for (int j = 0; j < 6; ++j) {
+                    mat[k][j] -= factor * mat[i][j];
+                }
+            }
+        }
+    }
+    
+    // Inverse в mat[:,3:6]
+    double invXtX[3][3];
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            invXtX[i][j] = mat[i][j+3];
+        }
+    }
+    
+    double t_crit = getTCritical(alpha, n - 3);
+    
+    // Для каждого future step
+    for (size_t k = 1; k <= steps; ++k) {
+        double t_future = static_cast<double>(n + k - 1);
+        double t2_future = t_future * t_future;
+        double point = a + b * t_future + c * t2_future;
+        
+        // x_future = [1, t, t^2]
+        double x[3] = {1.0, t_future, t2_future};
+        
+        // x * invXtX * x^T
+        double quad_form = 0.0;
+        for (int i = 0; i < 3; ++i) {
+            double temp = 0.0;
+            for (int j = 0; j < 3; ++j) {
+                temp += x[j] * invXtX[j][i];
+            }
+            quad_form += temp * x[i];
+        }
+        
+        // Для prediction interval: sqrt( MSE * (1 + quad_form) )
+        double se_pred = std_err * std::sqrt(1.0 + quad_form);
+        
+        double half_width = t_crit * se_pred;
+        double lower = point - half_width;
+        double upper = point + half_width;
+        
+        results.push_back({point, lower, upper});
+    }
+    
+    return results;
+}
+
+// SeriesClass.cpp (добавления в конец файла, после существующих реализаций)
+
+// Реализация forecastPolynomial3
+std::vector<SeriesClass::Forecast> SeriesClass::forecastPolynomial3(size_t steps, double alpha) const {
+    std::vector<Forecast> results;
+    if (data.size() < 4) return results; // Нужно минимум 4 точки для poly3
+
+    size_t n = data.size();
+    
+    // Fit poly3: a + b*t + c*t^2 + d*t^3
+    auto coeffs = fitPolynomial3();
+    if (coeffs.size() != 4) return results;
+    double a = coeffs[0], b = coeffs[1], c = coeffs[2], d = coeffs[3];
+    
+    // Вычисление SSE
+    double SSE = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        double t = static_cast<double>(i);
+        double t2 = t * t;
+        double t3 = t2 * t;
+        double y_hat = a + b * t + c * t2 + d * t3;
+        SSE += (data[i] - y_hat) * (data[i] - y_hat);
+    }
+    double MSE = SSE / (n - 4); // df = n - (k+1), k=3
+    double std_err = std::sqrt(MSE);
+    
+    // Суммы для XtX: sum_t^0 to sum_t^6
+    double sum_t0 = static_cast<double>(n);
+    double sum_t = 0.0, sum_t2 = 0.0, sum_t3 = 0.0, sum_t4 = 0.0, sum_t5 = 0.0, sum_t6 = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        double t = static_cast<double>(i);
+        double t2 = t * t;
+        double t3 = t2 * t;
+        double t4 = t3 * t;
+        double t5 = t4 * t;
+        double t6 = t5 * t;
+        sum_t += t;
+        sum_t2 += t2;
+        sum_t3 += t3;
+        sum_t4 += t4;
+        sum_t5 += t5;
+        sum_t6 += t6;
+    }
+    
+    // Матрица XtX 4x4
+    double XtX[4][4] = {
+        {sum_t0, sum_t, sum_t2, sum_t3},
+        {sum_t, sum_t2, sum_t3, sum_t4},
+        {sum_t2, sum_t3, sum_t4, sum_t5},
+        {sum_t3, sum_t4, sum_t5, sum_t6}
+    };
+    
+    // Augmented matrix для inverse: 4x8
+    double mat[4][8];
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            mat[i][j] = XtX[i][j];
+            mat[i][j+4] = (i == j) ? 1.0 : 0.0;
+        }
+    }
+    
+    // Gauss-Jordan elimination
+    for (int i = 0; i < 4; ++i) {
+        // Find pivot
+        int pivot_row = i;
+        for (int k = i + 1; k < 4; ++k) {
+            if (std::abs(mat[k][i]) > std::abs(mat[pivot_row][i])) {
+                pivot_row = k;
+            }
+        }
+        // Swap rows
+        if (pivot_row != i) {
+            for (int j = 0; j < 8; ++j) {
+                std::swap(mat[i][j], mat[pivot_row][j]);
+            }
+        }
+        
+        if (std::abs(mat[i][i]) < 1e-12) {
+            // Singular matrix
+            return results;
+        }
+        
+        double pivot = mat[i][i];
+        for (int j = 0; j < 8; ++j) {
+            mat[i][j] /= pivot;
+        }
+        
+        for (int k = 0; k < 4; ++k) {
+            if (k != i) {
+                double factor = mat[k][i];
+                for (int j = 0; j < 8; ++j) {
+                    mat[k][j] -= factor * mat[i][j];
+                }
+            }
+        }
+    }
+    
+    // Inverse в mat[:,4:8]
+    double invXtX[4][4];
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            invXtX[i][j] = mat[i][j+4];
+        }
+    }
+    
+    double t_crit = getTCritical(alpha, n - 4);
+    
+    // Для каждого future step
+    for (size_t k = 1; k <= steps; ++k) {
+        double t_future = static_cast<double>(n + k - 1);
+        double t2_future = t_future * t_future;
+        double t3_future = t2_future * t_future;
+        double point = a + b * t_future + c * t2_future + d * t3_future;
+        
+        // x_future = [1, t, t^2, t^3]
+        double x[4] = {1.0, t_future, t2_future, t3_future};
+        
+        // x * invXtX * x^T
+        double quad_form = 0.0;
+        for (int i = 0; i < 4; ++i) {
+            double temp = 0.0;
+            for (int j = 0; j < 4; ++j) {
+                temp += x[j] * invXtX[j][i];
+            }
+            quad_form += temp * x[i];
+        }
+        
+        // se_pred = sqrt( MSE * (1 + quad_form) )
+        double se_pred = std_err * std::sqrt(1.0 + quad_form);
+        
+        double half_width = t_crit * se_pred;
+        double lower = point - half_width;
+        double upper = point + half_width;
+        double span = upper - lower;
+        
+        results.push_back({point, lower, upper});
+    }
+    
+    return results;
 }

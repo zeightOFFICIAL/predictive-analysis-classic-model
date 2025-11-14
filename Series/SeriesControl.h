@@ -72,6 +72,10 @@ public:
     
     
     void analyzeGrowthCurves() const;
+
+
+
+void forecastAnalysis(size_t shortStep = 3, size_t longStep = 7) const;
 };
 
 #endif 
