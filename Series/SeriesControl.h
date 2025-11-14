@@ -26,13 +26,17 @@ private:
     void cleanupDataFiles(const std::vector<std::string>& filenames) const;
     
     void plotGrowthCurvesComparison(const std::vector<double>& linear_pred,
-                                             const std::vector<double>& exp_pred,
-                                             const std::vector<double>& gomp_pred,
-                                             const std::vector<double>& log_pred,
-                                             bool linear_valid,
-                                             bool exp_valid,
-                                             bool gomp_valid,
-                                             bool logistic_valid) const;
+                              const std::vector<double>& exp_pred,
+                              const std::vector<double>& gomp_pred,
+                              const std::vector<double>& log_pred,
+                              const std::vector<double>& poly2_pred,
+                              const std::vector<double>& poly3_pred,
+                              bool linear_valid,
+                              bool exp_valid,
+                              bool gomp_valid,
+                              bool logistic_valid,
+                              bool poly2_valid,
+                              bool poly3_valid) const;
 
 public:
     

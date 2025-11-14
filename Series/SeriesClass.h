@@ -75,6 +75,8 @@ public:
     std::pair<double, double> fitExponential() const;
     std::pair<double, double> fitGompertz() const;
     std::pair<double, double> fitLogistic() const;
+    std::vector<double> fitPolynomial2() const;
+    std::vector<double> fitPolynomial3() const;
     
     
     std::vector<double> predictLinear(double a, double b) const;
@@ -84,6 +86,8 @@ public:
 
     std::vector<double> predictGompertz(double k, double t0) const;
     std::vector<double> predictLogistic(double k, double A) const;
+    std::vector<double> predictPolynomial2(const std::vector<double>& coeffs) const;
+    std::vector<double> predictPolynomial3(const std::vector<double>& coeffs) const;
 };
 
 #endif 

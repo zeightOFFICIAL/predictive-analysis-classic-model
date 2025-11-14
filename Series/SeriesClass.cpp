@@ -762,18 +762,7 @@ std::vector<double> SeriesClass::predictExponential(double a, double b) const {
 
 
 void SeriesClass::analyzeGrowthCurveCharacteristics() const {
-    std::cout << "=== DETAILED GROWTH CURVE ANALYSIS ===" << std::endl;
-    
-    double min_val = *std::min_element(data.begin(), data.end());
-    double max_val = *std::max_element(data.begin(), data.end());
-    std::cout << "Data range: [" << min_val << ", " << max_val << "]" << std::endl;
-    std::cout << "Data size: " << data.size() << std::endl;
-    
-    int non_positive_count = 0;
-    for (double val : data) {
-        if (val <= 0) non_positive_count++;
-    }
-    std::cout << "Non-positive values: " << non_positive_count << std::endl;
+    std::cout << "=== ANALYSIS OF GROWTH CURVE CHARACTERISTICS ===" << std::endl;
     
     auto firstDiff = calculateFirstDifferences();
     auto secondDiff = calculateSecondDifferences();
@@ -782,6 +771,7 @@ void SeriesClass::analyzeGrowthCurveCharacteristics() const {
     auto gompertzInd = calculateGompertzIndicator();
     auto logisticInd = calculateLogisticIndicator();
     
+    // Подсчет валидных значений для Гомперца и Логистической
     int valid_gompertz = 0, valid_logistic = 0;
     double sum_gompertz = 0.0, sum_logistic = 0.0;
     
@@ -821,27 +811,31 @@ void SeriesClass::analyzeGrowthCurveCharacteristics() const {
     double meanGompertz = (valid_gompertz > 0) ? sum_gompertz / valid_gompertz : 0.0;
     double meanLogistic = (valid_logistic > 0) ? sum_logistic / valid_logistic : 0.0;
     
-    std::cout << "\nValid Gompertz indicators: " << valid_gompertz << "/" << gompertzInd.size() << std::endl;
+    std::cout << "Data size: " << data.size() << std::endl;
+    std::cout << "Valid Gompertz indicators: " << valid_gompertz << "/" << gompertzInd.size() << std::endl;
     std::cout << "Valid Logistic indicators: " << valid_logistic << "/" << logisticInd.size() << std::endl;
     
-    std::cout << "\nMean First Differences (delta Y_t): " << meanFirstDiff << std::endl;
-    std::cout << "Mean Second Differences (delta sqr Y_t): " << meanSecondDiff << std::endl;
-    std::cout << "Mean Relative First Differences (delta Y_t/Y_t): " << meanRelativeDiff << std::endl;
-    std::cout << "Mean Log First Differences (ln delta Y_t): " << meanLogFirstDiff << std::endl;
-    std::cout << "Mean Gompertz Indicator (ln(delta Y_t/Y_t)): " << meanGompertz << std::endl;
-    std::cout << "Mean Logistic Indicator (ln(delta Y_t/Y_t sqr)): " << meanLogistic << std::endl;
-
+    std::cout << "Mean First Differences: " << meanFirstDiff << std::endl;
+    std::cout << "Mean Second Differences: " << meanSecondDiff << std::endl;
+    std::cout << "Mean Relative First Differences: " << meanRelativeDiff << std::endl;
+    std::cout << "Mean Log First Differences: " << meanLogFirstDiff << std::endl;
+    std::cout << "Mean Gompertz Indicator: " << meanGompertz << std::endl;
+    std::cout << "Mean Logistic Indicator: " << meanLogistic << std::endl;
+    
+    // Упрощенная логика выбора кривой
+    std::cout << "\n=== GROWTH CURVE SELECTION ===" << std::endl;
     
     bool constant_first_diff = (std::abs(meanSecondDiff) < 0.1 * std::abs(meanFirstDiff));
-    bool constant_relative_growth = (std::abs(meanRelativeDiff - meanFirstDiff) > 10.0 * std::abs(meanRelativeDiff));
-    bool gompertz_available = (valid_gompertz > data.size() * 0.1); 
+    bool gompertz_available = (valid_gompertz > data.size() * 0.1);
     bool logistic_available = (valid_logistic > data.size() * 0.1);
     
-    std::cout << "\n=== RECOMMENDATION ===" << std::endl;
+    std::cout << "Constant first differences: " << (constant_first_diff ? "YES" : "NO") << std::endl;
+    std::cout << "Gompertz data available: " << (gompertz_available ? "YES" : "NO") << std::endl;
+    std::cout << "Logistic data available: " << (logistic_available ? "YES" : "NO") << std::endl;
+    
+    std::cout << "RECOMMENDATION: ";
     if (constant_first_diff && meanFirstDiff > 0) {
         std::cout << "LINEAR POLYNOMIAL (constant positive growth)" << std::endl;
-    } else if (constant_relative_growth && meanRelativeDiff > 0) {
-        std::cout << "EXPONENTIAL CURVE (constant relative growth)" << std::endl;
     } else if (gompertz_available && std::abs(meanGompertz) > 1e-10) {
         std::cout << "GOMPERTZ CURVE (saturation growth pattern)" << std::endl;
     } else if (logistic_available && std::abs(meanLogistic) > 1e-10) {
@@ -849,4 +843,167 @@ void SeriesClass::analyzeGrowthCurveCharacteristics() const {
     } else {
         std::cout << "LINEAR POLYNOMIAL (default recommendation)" << std::endl;
     }
+}
+
+std::vector<double> SeriesClass::fitPolynomial2() const {
+    if (data.empty() || data.size() < 3) return {0.0, 0.0, 0.0};
+    
+    double sum_t = 0.0, sum_t2 = 0.0, sum_t3 = 0.0, sum_t4 = 0.0;
+    double sum_y = 0.0, sum_ty = 0.0, sum_t2y = 0.0;
+    size_t n = data.size();
+    
+    for (size_t t = 0; t < n; ++t) {
+        double t_val = static_cast<double>(t);
+        double t2 = t_val * t_val;
+        double t3 = t2 * t_val;
+        double t4 = t3 * t_val;
+        
+        sum_t += t_val;
+        sum_t2 += t2;
+        sum_t3 += t3;
+        sum_t4 += t4;
+        sum_y += data[t];
+        sum_ty += t_val * data[t];
+        sum_t2y += t2 * data[t];
+    }
+    
+    // Решаем систему уравнений методом Крамера
+    double det = n * (sum_t2 * sum_t4 - sum_t3 * sum_t3) 
+               - sum_t * (sum_t * sum_t4 - sum_t2 * sum_t3)
+               + sum_t2 * (sum_t * sum_t3 - sum_t2 * sum_t2);
+    
+    if (std::abs(det) < 1e-12) return {0.0, 0.0, 0.0};
+    
+    double det_a = sum_y * (sum_t2 * sum_t4 - sum_t3 * sum_t3)
+                 - sum_t * (sum_ty * sum_t4 - sum_t2y * sum_t3)
+                 + sum_t2 * (sum_ty * sum_t3 - sum_t2y * sum_t2);
+    
+    double det_b = n * (sum_ty * sum_t4 - sum_t2y * sum_t3)
+                 - sum_y * (sum_t * sum_t4 - sum_t2 * sum_t3)
+                 + sum_t2 * (sum_t * sum_t2y - sum_ty * sum_t2);
+    
+    double det_c = n * (sum_t2 * sum_t2y - sum_t3 * sum_ty)
+                 - sum_t * (sum_t * sum_t2y - sum_t2 * sum_ty)
+                 + sum_y * (sum_t * sum_t3 - sum_t2 * sum_t2);
+    
+    double a = det_a / det;
+    double b = det_b / det;
+    double c = det_c / det;
+    
+    return {a, b, c};
+}
+
+// Метод наименьших квадратов для полинома 3-го порядка y = a + b*t + c*t² + d*t³
+std::vector<double> SeriesClass::fitPolynomial3() const {
+    if (data.empty() || data.size() < 4) return {0.0, 0.0, 0.0, 0.0};
+    
+    double sum_t = 0.0, sum_t2 = 0.0, sum_t3 = 0.0, sum_t4 = 0.0, sum_t5 = 0.0, sum_t6 = 0.0;
+    double sum_y = 0.0, sum_ty = 0.0, sum_t2y = 0.0, sum_t3y = 0.0;
+    size_t n = data.size();
+    
+    for (size_t t = 0; t < n; ++t) {
+        double t_val = static_cast<double>(t);
+        double t2 = t_val * t_val;
+        double t3 = t2 * t_val;
+        double t4 = t3 * t_val;
+        double t5 = t4 * t_val;
+        double t6 = t5 * t_val;
+        
+        sum_t += t_val;
+        sum_t2 += t2;
+        sum_t3 += t3;
+        sum_t4 += t4;
+        sum_t5 += t5;
+        sum_t6 += t6;
+        sum_y += data[t];
+        sum_ty += t_val * data[t];
+        sum_t2y += t2 * data[t];
+        sum_t3y += t3 * data[t];
+    }
+    
+    // Матрица системы уравнений 4x4
+    double mat[4][4] = {
+        {static_cast<double>(n), sum_t, sum_t2, sum_t3},
+        {sum_t, sum_t2, sum_t3, sum_t4},
+        {sum_t2, sum_t3, sum_t4, sum_t5},
+        {sum_t3, sum_t4, sum_t5, sum_t6}
+    };
+    
+    double vec[4] = {sum_y, sum_ty, sum_t2y, sum_t3y};
+    
+    // Решаем методом Гаусса
+    for (int i = 0; i < 4; ++i) {
+        // Поиск главного элемента
+        int max_row = i;
+        for (int k = i + 1; k < 4; ++k) {
+            if (std::abs(mat[k][i]) > std::abs(mat[max_row][i])) {
+                max_row = k;
+            }
+        }
+        
+        // Перестановка строк
+        for (int k = i; k < 4; ++k) {
+            std::swap(mat[i][k], mat[max_row][k]);
+        }
+        std::swap(vec[i], vec[max_row]);
+        
+        if (std::abs(mat[i][i]) < 1e-12) {
+            return {0.0, 0.0, 0.0, 0.0};
+        }
+        
+        // Нормализация
+        for (int k = i + 1; k < 4; ++k) {
+            double factor = mat[k][i] / mat[i][i];
+            for (int j = i; j < 4; ++j) {
+                mat[k][j] -= factor * mat[i][j];
+            }
+            vec[k] -= factor * vec[i];
+        }
+    }
+    
+    // Обратный ход
+    double coeffs[4];
+    for (int i = 3; i >= 0; --i) {
+        coeffs[i] = vec[i];
+        for (int j = i + 1; j < 4; ++j) {
+            coeffs[i] -= mat[i][j] * coeffs[j];
+        }
+        coeffs[i] /= mat[i][i];
+    }
+    
+    return {coeffs[0], coeffs[1], coeffs[2], coeffs[3]};
+}
+
+// Прогнозирование для полинома 2-го порядка
+std::vector<double> SeriesClass::predictPolynomial2(const std::vector<double>& coeffs) const {
+    std::vector<double> predictions;
+    if (coeffs.size() != 3) return predictions;
+    
+    predictions.reserve(data.size());
+    double a = coeffs[0], b = coeffs[1], c = coeffs[2];
+    
+    for (size_t t = 0; t < data.size(); ++t) {
+        double t_val = static_cast<double>(t);
+        predictions.push_back(a + b * t_val + c * t_val * t_val);
+    }
+    
+    return predictions;
+}
+
+// Прогнозирование для полинома 3-го порядка
+std::vector<double> SeriesClass::predictPolynomial3(const std::vector<double>& coeffs) const {
+    std::vector<double> predictions;
+    if (coeffs.size() != 4) return predictions;
+    
+    predictions.reserve(data.size());
+    double a = coeffs[0], b = coeffs[1], c = coeffs[2], d = coeffs[3];
+    
+    for (size_t t = 0; t < data.size(); ++t) {
+        double t_val = static_cast<double>(t);
+        double t2 = t_val * t_val;
+        double t3 = t2 * t_val;
+        predictions.push_back(a + b * t_val + c * t2 + d * t3);
+    }
+    
+    return predictions;
 }
